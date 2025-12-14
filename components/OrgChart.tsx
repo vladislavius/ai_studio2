@@ -80,7 +80,7 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
     <div className="h-full flex flex-col relative bg-slate-50/50 overflow-hidden">
         
         {/* UNIFIED SCROLLABLE AREA (X and Y) */}
-        <div className="flex-1 overflow-auto custom-scrollbar p-8">
+        <div className="flex-1 overflow-auto custom-scrollbar p-4 md:p-8">
             <div className="min-w-max mx-auto flex flex-col items-center"> 
                 
                 {/* 2. HIERARCHY TOP (FOUNDER -> DIRECTOR) - COMPACT */}
@@ -89,7 +89,7 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
                     {/* FOUNDER CARD (Compact) */}
                     <div 
                         onClick={() => handleDeptClick('owner')}
-                        className="w-60 bg-white rounded-xl shadow-md border-2 border-amber-200 p-2.5 cursor-pointer hover:-translate-y-1 transition-transform relative z-20"
+                        className="w-56 md:w-60 bg-white rounded-xl shadow-md border-2 border-amber-200 p-2.5 cursor-pointer hover:-translate-y-1 transition-transform relative z-20"
                     >
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 shadow-inner flex-shrink-0">
@@ -112,7 +112,7 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
                     {/* DIRECTOR CARD (Compact) */}
                     <div 
                         onClick={() => handleDeptClick('dept7', 'dept7_19')} 
-                        className="w-60 bg-white rounded-xl shadow-sm border border-slate-300 p-2.5 cursor-pointer hover:-translate-y-1 transition-transform relative z-20"
+                        className="w-56 md:w-60 bg-white rounded-xl shadow-sm border border-slate-300 p-2.5 cursor-pointer hover:-translate-y-1 transition-transform relative z-20"
                     >
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 shadow-inner flex-shrink-0">
@@ -131,22 +131,22 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
                 </div>
 
                 {/* 3. DEPARTMENTS ROW */}
-                <div className="relative mb-8">
+                <div className="relative mb-8 w-full max-w-[100vw] md:max-w-none">
                     {/* Horizontal Connector Line */}
                     <div className="absolute top-0 left-10 right-10 h-px bg-slate-300 -z-10"></div>
 
                     {/* Horizontal Container (Not scrollable itself, relies on parent) */}
-                    <div className="flex justify-center gap-4 pt-6">
+                    <div className="flex flex-col md:flex-row justify-center gap-4 md:gap-4 pt-6 md:pt-6">
                         {HORIZONTAL_DEPT_ORDER.map(deptId => {
                             const dept = ORGANIZATION_STRUCTURE[deptId];
                             const subDepts = dept.departments ? Object.values(dept.departments) : [];
                             const deptColor = dept.color;
                             
                             return (
-                                <div key={deptId} className="flex-shrink-0 w-64 flex flex-col group relative">
+                                <div key={deptId} className="flex-shrink-0 w-full md:w-64 flex flex-col group relative px-4 md:px-0">
                                     
-                                    {/* Vertical Connector from Main Line */}
-                                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-px h-6 bg-slate-300"></div>
+                                    {/* Vertical Connector from Main Line (Desktop) */}
+                                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-px h-6 bg-slate-300 hidden md:block"></div>
 
                                     {/* Department Card */}
                                     <div className="bg-white rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/50 flex flex-col h-[400px] overflow-hidden transition-all duration-300 hover:shadow-xl">
@@ -216,7 +216,7 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
                 </div>
 
                 {/* 1. GOAL & VFP BANNERS - Compact & Bottom */}
-                <div className="grid grid-cols-2 gap-4 mt-4 mb-8 max-w-3xl w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-8 max-w-3xl w-full px-4 md:px-0">
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center text-center relative overflow-hidden group hover:shadow-md transition-all">
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
                         <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
@@ -246,7 +246,7 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
         {/* EMPLOYEE DRAWER (SLIDE OVER) */}
         {isDrawerOpen && currentDept && (
             <div className="absolute inset-0 z-50 flex justify-end bg-slate-900/10 backdrop-blur-[2px] animate-in fade-in duration-300">
-                <div className="w-[450px] bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-100">
+                <div className="w-full md:w-[450px] bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-100">
                     
                     {/* Drawer Header */}
                     <div className="p-8 border-b border-slate-100 bg-white relative overflow-hidden">

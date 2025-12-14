@@ -4,13 +4,14 @@ import { supabase } from '../supabaseClient';
 import { StatisticDefinition, StatisticValue, WiseCondition, Employee } from '../types';
 import { ORGANIZATION_STRUCTURE, HANDBOOK_STATISTICS, CONDITION_FORMULAS, WISE_CONDITIONS } from '../constants';
 import StatsChart from './StatsChart';
-import { TrendingUp, TrendingDown, ArrowRight, Zap, List, X, Building2, LayoutDashboard, Edit2, Trash2, Calendar, Plus, Search, Filter, Layers, Info, HelpCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowRight, Zap, List, X, Building2, LayoutDashboard, Edit2, Trash2, Calendar, Plus, Search, Filter, Layers, Info, HelpCircle, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface StatisticsTabProps {
   employees: Employee[];
   isOffline?: boolean;
   selectedDeptId?: string | null;
+  isAdmin?: boolean;
 }
 
 // Helper to replace date-fns/subWeeks locally to ensure compatibility
@@ -39,7 +40,7 @@ const generateMockHistory = (baseVal: number, weeks: number = 52) => {
 const DEMO_VALUES: Record<string, StatisticValue[]> = {};
 DEMO_DEFINITIONS.forEach((def) => { let base = 100; if (def.title.includes('Выручка') || def.title.includes('Доход')) base = 1500000; DEMO_VALUES[def.id] = generateMockHistory(base, 52).map(v => ({...v, definition_id: def.id})); });
 
-const DEPT_ORDER = ['dept7', 'dept1', 'dept2', 'dept3', 'dept4', 'dept5', 'dept6'];
+const DEPT_ORDER = ['owner', 'dept7', 'dept1', 'dept2', 'dept3', 'dept4', 'dept5', 'dept6'];
 
 // UPDATED PERIODS: Since data is Weekly, "1 Week" is just a dot. Removed 1w/3w.
 // Added All Time option.
@@ -86,7 +87,7 @@ const analyzeTrend = (vals: StatisticValue[], inverted: boolean = false) => {
     return { condition, change, current: currentVal, prev: prevVal, diff };
 };
 
-const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, selectedDeptId }) => {
+const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, selectedDeptId, isAdmin }) => {
   const [definitions, setDefinitions] = useState<StatisticDefinition[]>([]);
   const [allLatestValues, setAllLatestValues] = useState<Record<string, StatisticValue[]>>({});
   const [loading, setLoading] = useState(false);
@@ -160,16 +161,6 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
       return filtered;
   };
 
-  const getResponsiblePerson = (ownerId: string) => {
-      const dept = ORGANIZATION_STRUCTURE[ownerId];
-      if (dept) return dept.manager;
-      for(const key in ORGANIZATION_STRUCTURE) {
-          const d = ORGANIZATION_STRUCTURE[key];
-          if (d.departments && d.departments[ownerId]) return d.departments[ownerId].manager;
-      }
-      return "-";
-  };
-
   const getOwnerName = (ownerId: string) => {
       if (ORGANIZATION_STRUCTURE[ownerId]) return ORGANIZATION_STRUCTURE[ownerId].name;
       for(const key in ORGANIZATION_STRUCTURE) {
@@ -177,6 +168,15 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
           if (d.departments && d.departments[ownerId]) return d.departments[ownerId].name;
       }
       return ownerId;
+  };
+
+  const getParentDeptId = (ownerId: string): string => {
+      if (ORGANIZATION_STRUCTURE[ownerId]) return ownerId;
+      for(const key in ORGANIZATION_STRUCTURE) {
+          const d = ORGANIZATION_STRUCTURE[key];
+          if (d.departments && d.departments[ownerId]) return key;
+      }
+      return 'other';
   };
 
   // --- CRUD ---
@@ -196,6 +196,10 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
   };
 
   const handleOpenValues = async (stat: StatisticDefinition) => {
+      // Allow viewing values, but edit only if admin? 
+      // For now, let's say only admin can input data.
+      if (!isAdmin) return;
+
       setSelectedStatForValues(stat);
       if(supabase) {
           const { data } = await supabase.from('statistics_values').select('*').eq('definition_id', stat.id).order('date', {ascending: false});
@@ -257,8 +261,8 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                   {/* Header */}
                   <div className="p-4 pt-5 relative border-b border-black/5 pr-10">
                       <h3 
-                        className="text-sm font-bold text-slate-800 line-clamp-2 min-h-[40px] flex items-center leading-snug cursor-pointer hover:text-blue-600 transition-colors"
-                        onClick={() => handleOpenValues(stat)}
+                        className={`text-sm font-bold text-slate-800 line-clamp-2 min-h-[40px] flex items-center leading-snug transition-colors ${isAdmin ? 'cursor-pointer hover:text-blue-600' : ''}`}
+                        onClick={() => isAdmin && handleOpenValues(stat)}
                       >
                           {stat.title}
                       </h3>
@@ -308,7 +312,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                     className="absolute inset-0 p-2 flex flex-col transition-opacity duration-300"
                     style={{ opacity: isInfoOpen ? 0.1 : 1, pointerEvents: isInfoOpen ? 'none' : 'auto' }}
                   >
-                       <div className="flex-1 w-full rounded-xl border border-slate-100 p-2 bg-white cursor-pointer" onClick={() => handleOpenValues(stat)}>
+                       <div className={`flex-1 w-full rounded-xl border border-slate-100 p-2 bg-white ${isAdmin ? 'cursor-pointer' : ''}`} onClick={() => isAdmin && handleOpenValues(stat)}>
                            {/* Key prop ensures animation replays when filtered period changes */}
                            <StatsChart 
                                 key={selectedPeriod} 
@@ -351,8 +355,8 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
           
           {/* Company Dashboard (No Dept Selected) */}
           {!selectedDeptId && (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex items-center justify-between">
-                 <div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row items-center justify-between">
+                 <div className="mb-4 md:mb-0">
                      <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><LayoutDashboard className="text-blue-600"/> Обзор Компании</h2>
                      <p className="text-slate-500 mt-1">Ключевые показатели эффективности (ГСД) по всем департаментам.</p>
                  </div>
@@ -361,7 +365,8 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
 
           {DEPT_ORDER.filter(id => !selectedDeptId || id === selectedDeptId).map(deptId => {
               const dept = ORGANIZATION_STRUCTURE[deptId];
-              
+              if (!dept) return null;
+
               // 1. Get stats belonging directly to the Dept
               const deptStats = definitions.filter(d => d.owner_id === deptId);
               
@@ -391,7 +396,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs" style={{backgroundColor: dept.color}}>{dept.name.substring(0,1)}</div>
                                    {dept.name}
                                </h2>
-                               <span className="text-slate-400 text-xs font-bold">{dept.manager}</span>
+                               <span className="text-slate-400 text-xs font-bold hidden sm:block">{dept.manager}</span>
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                {allDeptStats.map(stat => renderStatCard(stat, dept.color))}
@@ -407,11 +412,11 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                            {/* Header */}
                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
                                <div className="absolute top-0 right-0 w-64 h-64 opacity-10 rounded-full -mr-16 -mt-16 pointer-events-none" style={{backgroundColor: dept.color}}></div>
-                               <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3 relative z-10">
+                               <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-3 relative z-10">
                                    <div className="p-2 rounded-xl text-white shadow-lg" style={{backgroundColor: dept.color}}><Building2 size={32}/></div>
                                    {dept.fullName}
                                </h2>
-                               <p className="text-slate-500 mt-2 font-medium max-w-2xl">{dept.description}</p>
+                               <p className="text-slate-500 mt-2 font-medium max-w-2xl text-sm md:text-base">{dept.description}</p>
                                <div className="mt-4 flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 w-fit px-3 py-1 rounded-lg">
                                    <span className="w-2 h-2 rounded-full" style={{backgroundColor: dept.color}}></span>
                                    Руководитель: {dept.manager}
@@ -452,7 +457,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                                                 Отдел {sub.code}
                                             </div>
                                             <h3 className="text-xl font-bold text-slate-700">{sub.name}</h3>
-                                            <span className="text-slate-400 text-sm font-medium">({sub.manager})</span>
+                                            <span className="text-slate-400 text-sm font-medium hidden sm:inline">({sub.manager})</span>
                                        </div>
                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                            {subStats.map(stat => renderStatCard(stat, dept.color))}
@@ -468,77 +473,128 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
   );
 
   const renderListView = () => {
+      // 1. Filter definitions based on search
       const filtered = definitions.filter(d => d.title.toLowerCase().includes(listSearchTerm.toLowerCase()));
       
+      // 2. Group by Parent Department
+      const grouped: Record<string, StatisticDefinition[]> = {};
+      
+      filtered.forEach(def => {
+          const parentDeptId = getParentDeptId(def.owner_id || 'other');
+          if (!grouped[parentDeptId]) grouped[parentDeptId] = [];
+          grouped[parentDeptId].push(def);
+      });
+
+      // 3. Sort Keys based on DEPT_ORDER
+      const sortedKeys = Object.keys(grouped).sort((a, b) => {
+          const idxA = DEPT_ORDER.indexOf(a);
+          const idxB = DEPT_ORDER.indexOf(b);
+          // If not found in DEPT_ORDER (e.g., employee specific or 'other'), put at end
+          const valA = idxA === -1 ? 999 : idxA;
+          const valB = idxB === -1 ? 999 : idxB;
+          return valA - valB;
+      });
+
       return (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full animate-in fade-in">
-              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
-                  <div className="relative">
+              <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50 rounded-t-2xl gap-3">
+                  <div className="relative w-full md:w-auto">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
                       <input 
-                        className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl w-64 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                        className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl w-full md:w-64 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
                         placeholder="Поиск статистики..." 
                         value={listSearchTerm}
                         onChange={e => setListSearchTerm(e.target.value)}
                       />
                   </div>
-                  <button 
-                    onClick={() => { setEditingDef({ type: 'department', inverted: false, is_favorite: false }); setIsEditModalOpen(true); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 shadow-sm"
-                  >
-                      <Plus size={16}/> Добавить Статистику
-                  </button>
+                  {/* ADMIN ONLY: Add Stat Button */}
+                  {isAdmin && (
+                      <button 
+                        onClick={() => { setEditingDef({ type: 'department', inverted: false, is_favorite: false }); setIsEditModalOpen(true); }}
+                        className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 shadow-sm"
+                      >
+                          <Plus size={16}/> Добавить Статистику
+                      </button>
+                  )}
               </div>
+              
               <div className="flex-1 overflow-y-auto custom-scrollbar">
-                  <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
-                          <tr>
-                              <th className="px-6 py-3">Название</th>
-                              <th className="px-6 py-3">Владелец</th>
-                              <th className="px-6 py-3">Тип</th>
-                              <th className="px-6 py-3 text-right">Управление</th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                          {filtered.map(def => (
-                              <tr key={def.id} className="hover:bg-blue-50/30">
-                                  <td className="px-6 py-4 font-bold text-slate-700">
-                                      {def.title}
-                                      {def.is_favorite && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1 rounded">ГСД</span>}
-                                  </td>
-                                  <td className="px-6 py-4 text-slate-500">{getOwnerName(def.owner_id || '')}</td>
-                                  <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 rounded text-xs">{def.type}</span></td>
-                                  <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                      <button onClick={() => handleOpenValues(def)} className="p-2 text-emerald-600 bg-emerald-50 rounded hover:bg-emerald-100" title="Внести данные"><Calendar size={16}/></button>
-                                      <button onClick={() => { setEditingDef(def); setIsEditModalOpen(true); }} className="p-2 text-blue-600 bg-blue-50 rounded hover:bg-blue-100" title="Изменить"><Edit2 size={16}/></button>
-                                      <button onClick={() => handleDeleteDef(def.id)} className="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100" title="Удалить"><Trash2 size={16}/></button>
-                                  </td>
-                              </tr>
-                          ))}
-                      </tbody>
-                  </table>
+                  {sortedKeys.map(deptId => {
+                      const dept = ORGANIZATION_STRUCTURE[deptId] || { name: 'Прочее', color: '#94a3b8' };
+                      return (
+                          <div key={deptId} className="mb-0">
+                              {/* Department Header Stick */}
+                              <div className="sticky top-0 z-10 px-6 py-2 bg-slate-100/90 backdrop-blur-sm border-y border-slate-200 flex items-center gap-2">
+                                  <div className="w-3 h-3 rounded-full" style={{backgroundColor: dept.color}}></div>
+                                  <span className="font-black text-slate-600 text-xs uppercase tracking-wider">{dept.name}</span>
+                              </div>
+                              
+                              <table className="w-full text-sm text-left">
+                                  {deptId === sortedKeys[0] && (
+                                      <thead className="text-xs text-slate-500 uppercase bg-slate-50 hidden md:table-header-group">
+                                          <tr>
+                                              <th className="px-6 py-3 w-1/2">Название</th>
+                                              <th className="px-6 py-3">Владелец</th>
+                                              <th className="px-6 py-3">Тип</th>
+                                              <th className="px-6 py-3 text-right">Управление</th>
+                                          </tr>
+                                      </thead>
+                                  )}
+                                  <tbody className="divide-y divide-slate-100">
+                                      {grouped[deptId].map(def => (
+                                          <tr key={def.id} className="hover:bg-blue-50/30 flex flex-col md:table-row p-4 md:p-0 border-b md:border-b-0 border-slate-100">
+                                              <td className="md:px-6 md:py-4 font-bold text-slate-700 block md:table-cell mb-1 md:mb-0">
+                                                  {def.title}
+                                                  {def.is_favorite && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1 rounded inline-block">ГСД</span>}
+                                              </td>
+                                              <td className="md:px-6 md:py-4 text-slate-500 block md:table-cell text-xs md:text-sm mb-1 md:mb-0">
+                                                  <span className="md:hidden font-bold mr-1">Владелец:</span>
+                                                  {getOwnerName(def.owner_id || '')}
+                                              </td>
+                                              <td className="md:px-6 md:py-4 block md:table-cell mb-2 md:mb-0">
+                                                  <span className="px-2 py-1 bg-slate-100 rounded text-xs">{def.type}</span>
+                                              </td>
+                                              <td className="md:px-6 md:py-4 text-right flex justify-start md:justify-end gap-2 md:table-cell">
+                                                  {/* ADMIN ONLY: Edit Actions */}
+                                                  {isAdmin ? (
+                                                      <div className="flex gap-2">
+                                                          <button onClick={() => handleOpenValues(def)} className="p-2 text-emerald-600 bg-emerald-50 rounded hover:bg-emerald-100" title="Внести данные"><Calendar size={16}/></button>
+                                                          <button onClick={() => { setEditingDef(def); setIsEditModalOpen(true); }} className="p-2 text-blue-600 bg-blue-50 rounded hover:bg-blue-100" title="Изменить"><Edit2 size={16}/></button>
+                                                          <button onClick={() => handleDeleteDef(def.id)} className="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100" title="Удалить"><Trash2 size={16}/></button>
+                                                      </div>
+                                                  ) : (
+                                                      <span className="text-slate-300 text-xs italic">Только просмотр</span>
+                                                  )}
+                                              </td>
+                                          </tr>
+                                      ))}
+                                  </tbody>
+                              </table>
+                          </div>
+                      );
+                  })}
               </div>
           </div>
       );
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] relative bg-slate-50 p-6">
+    <div className="flex flex-col h-[calc(100vh-100px)] relative bg-slate-50 p-4 md:p-6">
         
         {/* TOP CONTROLS */}
-        <div className="flex justify-between items-center mb-6">
-            <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
-                <button onClick={() => setDisplayMode('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${displayMode === 'dashboard' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><LayoutDashboard size={16}/> Дашборд</button>
-                <button onClick={() => setDisplayMode('list')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${displayMode === 'list' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><List size={16}/> Список / Настройки</button>
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200 w-full md:w-auto">
+                <button onClick={() => setDisplayMode('dashboard')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${displayMode === 'dashboard' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><LayoutDashboard size={16}/> <span className="hidden sm:inline">Дашборд</span></button>
+                <button onClick={() => setDisplayMode('list')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${displayMode === 'list' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><List size={16}/> <span className="hidden sm:inline">Список / Настройки</span></button>
             </div>
 
             {displayMode === 'dashboard' && (
-                <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-200 overflow-x-auto w-full md:w-auto max-w-full">
                     {PERIODS.map(p => (
                         <button 
                             key={p.id}
                             onClick={() => setSelectedPeriod(p.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPeriod === p.id ? 'bg-blue-100 text-blue-700 shadow-sm ring-1 ring-blue-100' : 'text-slate-500 hover:bg-slate-50'}`}
+                            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPeriod === p.id ? 'bg-blue-100 text-blue-700 shadow-sm ring-1 ring-blue-100' : 'text-slate-500 hover:bg-slate-50'}`}
                         >
                             {p.label}
                         </button>
@@ -548,16 +604,16 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
         </div>
 
         {/* CONTENT AREA */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-0 md:pr-2">
             {displayMode === 'dashboard' ? renderDashboardView() : renderListView()}
         </div>
 
         {/* --- MODALS --- */}
         
-        {/* 1. Edit Statistic Definition Modal */}
+        {/* 1. Edit Statistic Definition Modal (Only accessible via buttons shown to Admin) */}
         {isEditModalOpen && (
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6 animate-in zoom-in-95">
+                <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6 animate-in zoom-in-95 overflow-y-auto max-h-[90vh]">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-xl font-bold">{editingDef?.id ? 'Редактировать Статистику' : 'Новая Статистика'}</h3>
                         <button onClick={() => setIsEditModalOpen(false)}><X className="text-slate-400"/></button>
@@ -642,13 +698,13 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
 
                     <div className="bg-slate-50 p-4 rounded-xl mb-4">
                         <div className="flex gap-3">
-                             <input type="date" value={editingValue.date || ''} onChange={e => setEditingValue({...editingValue, date: e.target.value})} className="border border-slate-300 bg-white p-2 rounded-lg text-sm text-slate-900" />
+                             <input type="date" value={editingValue.date || ''} onChange={e => setEditingValue({...editingValue, date: e.target.value})} className="border border-slate-300 bg-white p-2 rounded-lg text-sm text-slate-900 w-32" />
                              <input type="number" value={editingValue.value || 0} onChange={e => setEditingValue({...editingValue, value: parseFloat(e.target.value)})} className="border border-slate-300 bg-white p-2 rounded-lg flex-1 text-sm font-bold text-slate-900" placeholder="Значение" />
                              <button onClick={handleSaveValue} className="bg-blue-600 text-white px-4 rounded-lg font-bold text-sm">OK</button>
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto space-y-2">
+                    <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
                         {currentStatValues.map(val => (
                             <div key={val.id} className="flex justify-between items-center p-2 hover:bg-slate-50 rounded border-b border-transparent hover:border-slate-100">
                                 <div>

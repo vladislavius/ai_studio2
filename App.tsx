@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Briefcase, Cake, FileDown, Plus, Search, Menu, LayoutGrid, Database, Settings, Loader2, LogOut, TrendingUp, WifiOff, Network, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Briefcase, Cake, FileDown, Plus, Search, Menu, LayoutGrid, Database, Settings, Loader2, LogOut, TrendingUp, WifiOff, Network, List, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import EmployeeList from './components/EmployeeList';
 import EmployeeModal from './components/EmployeeModal';
 import Birthdays from './components/Birthdays';
@@ -78,11 +78,18 @@ function App() {
   const [employeeSubView, setEmployeeSubView] = useState<'list' | 'birthdays' | 'data'>('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState<string | null>(null); // Used for filtering stats in 'statistics' view
+  
+  // Sidebar State (Collapsed desktop, Closed mobile)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+
+  // --- ADMIN CHECK ---
+  // In a real app, this would be a database role. For now, we hardcode the admin email or offline mode.
+  const isAdmin = isOffline || session?.user?.email === 'admin@hrsystem.com';
 
   // --- Auth & Init Logic ---
   useEffect(() => {
@@ -112,7 +119,7 @@ function App() {
 
   const handleBypassAuth = () => {
       setIsOffline(true);
-      setSession({ user: { email: 'demo@offline.local' } });
+      setSession({ user: { email: 'admin@hrsystem.com' } }); // Offline users are admins by default for demo
       setEmployees(DEMO_EMPLOYEES);
       setAuthChecking(false);
   };
@@ -201,35 +208,77 @@ function App() {
     } catch (error: any) { alert('Error deleting: ' + error.message); }
   };
 
-  const handleEditClick = (emp: Employee) => { setEditingEmployee(emp); setIsModalOpen(true); };
+  const handleEditClick = (emp: Employee) => { 
+      // Only Admin can edit
+      if (!isAdmin) return;
+      setEditingEmployee(emp); 
+      setIsModalOpen(true); 
+  };
+  
   const handleAddClick = () => { setEditingEmployee(null); setIsModalOpen(true); };
   
-  const handleImportData = async (data: Employee[]) => { /* Import logic same as before */ };
+  const handleImportData = async (data: Employee[]) => {
+      // Basic merge/overwrite strategy
+      if (isOffline) {
+          setEmployees(data);
+          return;
+      }
+      // For online, iterate and upsert
+      // This is simplified; real bulk upsert usually done via backend func
+      setIsLoading(true);
+      for(const emp of data) {
+          await handleSaveEmployee(emp);
+      }
+      setIsLoading(false);
+  };
 
   if (authChecking) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={40} /></div>;
   if (!session) return <Auth onBypass={handleBypassAuth} />;
 
   const sidebarWidth = isSidebarCollapsed ? 'w-20' : 'w-72';
-  const mainMargin = isSidebarCollapsed ? 'ml-20' : 'ml-72';
+  // On mobile, sidebar is hidden by default and slides in
+  const sidebarMobileClasses = isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full';
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-slate-50 overflow-hidden relative">
       
+      {/* Mobile Backdrop */}
+      {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-slate-900/50 z-20 md:hidden backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          ></div>
+      )}
+
       {/* Sidebar */}
-      <aside className={`${sidebarWidth} bg-white border-r border-gray-200 flex-shrink-0 flex flex-col fixed h-full z-20 transition-all duration-300 ease-in-out shadow-lg shadow-slate-200/50`}>
+      <aside 
+        className={`fixed inset-y-0 left-0 z-30 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out shadow-lg shadow-slate-200/50 md:relative md:translate-x-0 ${sidebarWidth} ${sidebarMobileClasses}`}
+      >
         <div className="p-4 border-b border-gray-100 flex items-center justify-between h-[73px]">
           <div className="flex items-center gap-3 overflow-hidden">
              <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-white shadow-lg transition-all ${isOffline ? 'bg-slate-700 shadow-slate-300' : 'bg-blue-600 shadow-blue-200'}`}>
                 {isOffline ? <WifiOff size={20} /> : <Users size={24} />}
              </div>
-             <div className={`transition-opacity duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
+             <div className={`transition-opacity duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0 hidden md:block' : 'opacity-100'}`}>
                   <h1 className="font-bold text-lg text-slate-800 whitespace-nowrap">HR System</h1>
-                  {isOffline && <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">OFFLINE</span>}
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-1 ${isAdmin ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {isAdmin ? 'ADMIN' : 'STAFF'}
+                  </span>
              </div>
           </div>
+          
+          {/* Mobile Close Button */}
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="md:hidden p-2 text-slate-400 hover:bg-slate-100 rounded-lg"
+          >
+              <X size={20}/>
+          </button>
+
+          {/* Desktop Collapse Button */}
           <button 
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors absolute right-[-12px] top-6 bg-white border border-slate-200 shadow-sm z-30"
+            className="hidden md:block p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors absolute right-[-12px] top-6 bg-white border border-slate-200 shadow-sm z-30"
             title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
              {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -241,7 +290,7 @@ function App() {
             {!isSidebarCollapsed && <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 animate-in fade-in">Основное</p>}
             
             <button 
-                onClick={() => setCurrentView('org_chart')} 
+                onClick={() => { setCurrentView('org_chart'); setIsMobileMenuOpen(false); }} 
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium group relative ${currentView === 'org_chart' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 title="Оргсхема"
             >
@@ -249,21 +298,24 @@ function App() {
               {!isSidebarCollapsed && <span className="whitespace-nowrap">Оргсхема</span>}
             </button>
             
-            <button 
-                onClick={() => setCurrentView('employees')} 
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium group relative ${currentView === 'employees' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-                title="Сотрудники"
-            >
-              <div className="flex-shrink-0"><LayoutGrid size={20} /></div>
-              {!isSidebarCollapsed && <span className="whitespace-nowrap">Сотрудники</span>}
-            </button>
+            {/* HIDE EMPLOYEES TAB FOR NON-ADMINS */}
+            {isAdmin && (
+                <button 
+                    onClick={() => { setCurrentView('employees'); setIsMobileMenuOpen(false); }} 
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium group relative ${currentView === 'employees' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                    title="Сотрудники"
+                >
+                <div className="flex-shrink-0"><LayoutGrid size={20} /></div>
+                {!isSidebarCollapsed && <span className="whitespace-nowrap">Сотрудники</span>}
+                </button>
+            )}
           </div>
 
           <div>
              {!isSidebarCollapsed && <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 animate-in fade-in">Статистики</p>}
             
             <button 
-              onClick={() => { setSelectedDept(null); setCurrentView('statistics'); }}
+              onClick={() => { setSelectedDept(null); setCurrentView('statistics'); setIsMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all mb-1 ${currentView === 'statistics' && !selectedDept ? 'bg-slate-800 text-white font-semibold shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
               title="Дашборд Компании"
             >
@@ -278,6 +330,7 @@ function App() {
                     onClick={() => {
                       setSelectedDept(dept.id);
                       setCurrentView('statistics');
+                      setIsMobileMenuOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all group ${currentView === 'statistics' && selectedDept === dept.id ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}
                     title={dept.name}
@@ -305,33 +358,44 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 ${mainMargin} flex flex-col min-w-0 transition-all duration-300 ease-in-out`}>
+      <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out h-full overflow-hidden">
         {/* Top Bar */}
-        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-gray-200 px-8 py-4 flex justify-between items-center print:hidden h-[73px]">
+        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-gray-200 px-4 md:px-8 py-4 flex justify-between items-center print:hidden h-[73px]">
           <div className="flex items-center gap-4 flex-1">
+            {/* Mobile Menu Toggle */}
+            <button 
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"
+            >
+                <Menu size={24} />
+            </button>
+
             {/* Show Search only on Employee List subview */}
             {currentView === 'employees' && employeeSubView === 'list' && (
-              <div className="relative w-full max-w-md animate-in fade-in slide-in-from-left-2">
+              <div className="relative w-full max-w-xs md:max-w-md animate-in fade-in slide-in-from-left-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input 
                   type="text"
-                  placeholder="Поиск сотрудников..."
+                  placeholder="Поиск..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all text-sm md:text-base"
                 />
               </div>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={handleAddClick} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5">
-              <Plus size={20} /> Добавить
-            </button>
+            {/* HIDE ADD BUTTON IN STATISTICS OR FOR NON-ADMINS */}
+            {currentView === 'employees' && isAdmin && (
+                <button onClick={handleAddClick} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-medium shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5 text-sm md:text-base">
+                <Plus size={20} /> <span className="hidden sm:inline">Добавить</span>
+                </button>
+            )}
           </div>
         </header>
 
         {/* Content Area */}
-        <div className="p-8 flex-1 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 overflow-hidden p-4 md:p-8">
           {isLoading ? (
              <div className="flex flex-col items-center justify-center h-full text-slate-400"><Loader2 className="animate-spin mb-2" size={32} /><p>Загрузка данных...</p></div>
           ) : (
@@ -340,25 +404,26 @@ function App() {
                   <OrgChart employees={employees} onSelectEmployee={handleEditClick} />
               )}
 
-              {currentView === 'employees' && (
+              {/* Only Render Employees View if Admin */}
+              {currentView === 'employees' && isAdmin && (
                 <div className="flex flex-col h-full">
                   {/* Internal Navigation Tabs for Employees View */}
-                  <div className="flex border-b border-slate-200 mb-6">
+                  <div className="flex border-b border-slate-200 mb-6 overflow-x-auto">
                     <button 
                         onClick={() => setEmployeeSubView('list')}
-                        className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${employeeSubView === 'list' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                        className={`px-4 md:px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${employeeSubView === 'list' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                     >
                         <List size={16}/> Справочник
                     </button>
                     <button 
                         onClick={() => setEmployeeSubView('birthdays')}
-                        className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${employeeSubView === 'birthdays' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                        className={`px-4 md:px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${employeeSubView === 'birthdays' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                     >
                         <Cake size={16}/> Дни Рождения
                     </button>
                      <button 
                         onClick={() => setEmployeeSubView('data')}
-                        className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${employeeSubView === 'data' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                        className={`px-4 md:px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${employeeSubView === 'data' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                     >
                         <Database size={16}/> База Данных
                     </button>
@@ -369,8 +434,8 @@ function App() {
                       <div className="animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex justify-between items-end mb-6">
                           <div>
-                            <h2 className="text-2xl font-bold text-slate-800">Справочник сотрудников</h2>
-                            <p className="text-slate-500 mt-1">Всего {filteredEmployees.length} записей</p>
+                            <h2 className="text-xl md:text-2xl font-bold text-slate-800">Справочник сотрудников</h2>
+                            <p className="text-slate-500 mt-1 text-sm">Всего {filteredEmployees.length} записей</p>
                           </div>
                         </div>
                         <EmployeeList employees={filteredEmployees} onEdit={handleEditClick} onDelete={handleDeleteEmployee} />
@@ -379,7 +444,7 @@ function App() {
 
                     {employeeSubView === 'birthdays' && (
                         <div className="animate-in fade-in slide-in-from-bottom-2">
-                            <h2 className="text-2xl font-bold text-slate-800 mb-6">Календарь Дней Рождения</h2>
+                            <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-6">Календарь Дней Рождения</h2>
                             <Birthdays employees={employees} />
                         </div>
                     )}
@@ -394,7 +459,7 @@ function App() {
               )}
 
               {currentView === 'statistics' && (
-                  <StatisticsTab employees={employees} isOffline={isOffline} selectedDeptId={selectedDept} />
+                  <StatisticsTab employees={employees} isOffline={isOffline} selectedDeptId={selectedDept} isAdmin={isAdmin} />
               )}
             </>
           )}

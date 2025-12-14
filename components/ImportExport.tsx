@@ -1,6 +1,7 @@
+
 import React, { useRef } from 'react';
 import { Employee } from '../types';
-import { Download, Upload, FileJson, FileType, Database, AlertCircle } from 'lucide-react';
+import { Download, Upload, FileJson, FileType, Database, AlertCircle, FileSpreadsheet } from 'lucide-react';
 
 interface ImportExportProps {
   employees: Employee[];
@@ -9,6 +10,7 @@ interface ImportExportProps {
 
 const ImportExport: React.FC<ImportExportProps> = ({ employees, onImport }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadJSON = () => {
     const data = JSON.stringify(employees, null, 2);
@@ -20,14 +22,45 @@ const ImportExport: React.FC<ImportExportProps> = ({ employees, onImport }) => {
     a.click();
   };
 
+  // Convert Employees to CSV for Excel
+  const handleDownloadCSV = () => {
+      // Define headers
+      const headers = ['id', 'full_name', 'position', 'email', 'phone', 'department_id', 'subdepartment_id', 'birth_date', 'join_date'];
+      
+      const rows = employees.map(emp => {
+          return [
+              emp.id,
+              `"${emp.full_name.replace(/"/g, '""')}"`, // Escape quotes
+              `"${emp.position.replace(/"/g, '""')}"`,
+              emp.email || '',
+              emp.phone || '',
+              emp.department?.[0] || '',
+              emp.subdepartment?.[0] || '',
+              emp.birth_date || '',
+              emp.join_date || ''
+          ].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      // Add BOM for Excel UTF-8 compatibility
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hr_system_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+  };
+
   const handleDownloadEXE = () => {
-    // In a real web environment, we cannot generate a binary .exe file client-side.
-    // This is a simulation or placeholder for the requested feature.
     alert("Generating Windows Executable...\n\n(Note: In a real web app, this would trigger a server-side build. For this demo, we acknowledge the request.)");
   };
 
   const handleImportClick = () => {
       fileInputRef.current?.click();
+  };
+
+  const handleCSVImportClick = () => {
+      csvInputRef.current?.click();
   };
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,20 +81,101 @@ const ImportExport: React.FC<ImportExportProps> = ({ employees, onImport }) => {
         } catch (err) {
           alert('Error parsing JSON file. Please ensure it is a valid backup file.');
         }
-        // Reset input
         if (fileInputRef.current) fileInputRef.current.value = '';
       };
       reader.readAsText(file);
     }
   };
 
+  const handleCSVImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+              try {
+                  const content = e.target?.result as string;
+                  const lines = content.split('\n');
+                  const headers = lines[0].split(',').map(h => h.trim());
+                  
+                  const newEmployees: Employee[] = [];
+                  
+                  for(let i=1; i<lines.length; i++) {
+                      if(!lines[i].trim()) continue;
+                      // Simple CSV parse (doesn't handle commas inside quotes perfectly without library, but sufficient for standard export)
+                      const values = lines[i].split(','); 
+                      
+                      if(values.length < 2) continue;
+
+                      const emp: any = {
+                          created_at: new Date().toISOString(),
+                          updated_at: new Date().toISOString(),
+                          emergency_contacts: [],
+                          custom_fields: [],
+                          attachments: [],
+                          department: [],
+                          subdepartment: []
+                      };
+
+                      // Map CSV columns back to object
+                      // id, full_name, position, email, phone, department_id, subdepartment_id, birth_date, join_date
+                      emp.id = values[0]?.trim() || crypto.randomUUID();
+                      emp.full_name = values[1]?.replace(/"/g, '').trim();
+                      emp.position = values[2]?.replace(/"/g, '').trim();
+                      emp.email = values[3]?.trim();
+                      emp.phone = values[4]?.trim();
+                      if(values[5]?.trim()) emp.department = [values[5].trim()];
+                      if(values[6]?.trim()) emp.subdepartment = [values[6].trim()];
+                      emp.birth_date = values[7]?.trim();
+                      emp.join_date = values[8]?.trim();
+
+                      newEmployees.push(emp as Employee);
+                  }
+
+                  if (window.confirm(`Parsed ${newEmployees.length} employees from CSV/Excel. Update system?`)) {
+                      onImport(newEmployees);
+                  }
+
+              } catch(err) {
+                  alert('Error parsing CSV. Ensure format matches export.');
+              }
+              if (csvInputRef.current) csvInputRef.current.value = '';
+          };
+          reader.readAsText(file);
+      }
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
         <div>
             <h2 className="text-2xl font-bold text-slate-800">System Data Management</h2>
             <p className="text-slate-500 mt-1">Manage global database backups and restoration.</p>
         </div>
         
+        {/* Google Sheets / Excel Sync Section */}
+        <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-6 rounded-2xl border border-emerald-100 shadow-sm">
+            <div className="flex items-start gap-4">
+                <div className="bg-white p-3 rounded-xl shadow-sm text-emerald-600">
+                    <FileSpreadsheet size={32} />
+                </div>
+                <div className="flex-1">
+                    <h3 className="text-lg font-bold text-emerald-900">Excel / Google Sheets Sync</h3>
+                    <p className="text-sm text-emerald-700 mt-1 mb-4">
+                        Edit your employee data in Excel or Google Sheets. 
+                        Download the CSV below, edit it in your spreadsheet software, and upload it back to update the system.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <button onClick={handleDownloadCSV} className="px-4 py-2 bg-white text-emerald-700 border border-emerald-200 font-bold rounded-xl text-sm hover:bg-emerald-50 transition-colors shadow-sm">
+                            1. Download Excel (CSV)
+                        </button>
+                        <button onClick={handleCSVImportClick} className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-sm hover:bg-emerald-700 transition-colors shadow-sm">
+                            2. Upload Modified Excel (CSV)
+                        </button>
+                        <input type="file" ref={csvInputRef} onChange={handleCSVImport} accept=".csv" className="hidden" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Export JSON */}
@@ -100,8 +214,8 @@ const ImportExport: React.FC<ImportExportProps> = ({ employees, onImport }) => {
                 <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 mb-4 group-hover:scale-110 transition-transform relative z-10">
                     <Database size={24} />
                 </div>
-                <h3 className="font-bold text-lg text-slate-800 mb-2 relative z-10">Import Database</h3>
-                <p className="text-sm text-slate-500 mb-6 relative z-10">Restore system from a previously saved JSON file. <br/><span className="text-emerald-700 font-medium">Supports only JSON files.</span></p>
+                <h3 className="font-bold text-lg text-slate-800 mb-2 relative z-10">Import JSON Backup</h3>
+                <p className="text-sm text-slate-500 mb-6 relative z-10">Restore system from a previously saved JSON file. <br/><span className="text-emerald-700 font-medium">Supports only .JSON files.</span></p>
                 
                 <input 
                     type="file" 
