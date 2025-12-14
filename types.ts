@@ -108,4 +108,4 @@ export interface StatisticValue {
   notes?: string;
 }
 
-export type ViewMode = 'employees' | 'org_chart' | 'statistics';
+export type ViewMode = 'employees' | 'org_chart' | 'statistics' | 'settings';
