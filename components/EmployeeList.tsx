@@ -2,6 +2,7 @@ import React from 'react';
 import { Employee as EmployeeType } from '../types';
 import { ORGANIZATION_STRUCTURE } from '../constants';
 import { Edit2, Trash2, User, Phone, Mail, MessageCircle, FileText, Printer, Hash } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface EmployeeListProps {
   employees: EmployeeType[];
@@ -135,313 +136,356 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
             }
             .page {
                 width: 210mm;
-                height: 296mm;
+                min-height: 297mm;
                 padding: 15mm;
                 box-sizing: border-box;
                 position: relative;
                 display: flex;
                 flex-direction: column;
             }
-            
-            /* Branding / Footer */
-            .footer {
-                position: absolute;
-                bottom: 10mm;
-                left: 15mm;
-                right: 15mm;
-                border-top: 1px solid #e2e8f0;
-                padding-top: 4mm;
-                font-size: 8px;
-                color: #94a3b8;
-                display: flex;
-                justify-content: space-between;
-            }
 
-            /* Layout */
-            .header-section {
+            /* --- HEADER --- */
+            .header {
                 display: flex;
                 gap: 25px;
-                margin-bottom: 30px;
-                align-items: center;
+                margin-bottom: 40px;
+                align-items: flex-start;
             }
-            
-            .photo-container {
-                width: 100px;
-                height: 100px;
-                border-radius: 16px;
-                overflow: hidden;
-                border: 2px solid #f1f5f9;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                flex-shrink: 0;
+            .photo {
+                width: 120px;
+                height: 120px;
+                border-radius: 20px;
+                object-fit: cover;
+                background: #f1f5f9;
             }
-            .photo-container img { width: 100%; height: 100%; object-fit: cover; }
-            .photo-placeholder { width: 100%; height: 100%; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-weight: bold; font-size: 24px; }
+            .header-info h1 {
+                font-size: 26px;
+                font-weight: 900;
+                text-transform: uppercase;
+                margin: 0 0 5px 0;
+                color: #0f172a;
+                line-height: 1.1;
+            }
+            .header-info h2 {
+                font-size: 14px;
+                font-weight: 700;
+                color: #3b82f6; /* Blue Title */
+                text-transform: uppercase;
+                margin: 0 0 15px 0;
+            }
+            .badges {
+                display: flex;
+                gap: 8px;
+            }
+            .badge {
+                background: #f1f5f9;
+                color: #334155;
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            .badge.blue {
+                background: #eff6ff;
+                color: #1d4ed8;
+            }
 
-            .header-details h1 { margin: 0; font-size: 26px; font-weight: 800; color: #0f172a; line-height: 1.2; text-transform: uppercase; letter-spacing: -0.02em; }
-            .header-details h2 { margin: 4px 0 12px 0; font-size: 15px; font-weight: 600; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.05em; }
-            
-            .badges { display: flex; gap: 8px; flex-wrap: wrap; }
-            .badge { background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; color: #475569; border: 1px solid #e2e8f0; }
-            .badge.highlight { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-
-            /* Content Grid */
-            .content-grid {
+            /* --- LAYOUT --- */
+            .container {
                 display: grid;
-                grid-template-columns: 200px 1fr;
-                gap: 30px;
-                flex: 1;
+                grid-template-columns: 240px 1fr;
+                gap: 40px;
             }
-
-            /* Sidebar */
-            .sidebar { border-right: 1px solid #f1f5f9; padding-right: 20px; }
             
-            /* Main Content */
-            .main { }
-
-            /* Section Styling */
-            .section { margin-bottom: 24px; break-inside: avoid; }
+            .sidebar {
+                border-right: 1px solid #e2e8f0;
+                padding-right: 20px;
+            }
+            
+            .section {
+                margin-bottom: 30px;
+            }
+            
             .section-title {
                 font-size: 11px;
                 font-weight: 800;
+                color: #94a3b8; /* Light Grey Title */
                 text-transform: uppercase;
-                letter-spacing: 1px;
-                color: #94a3b8;
-                border-bottom: 2px solid #f1f5f9;
-                padding-bottom: 6px;
+                letter-spacing: 0.05em;
                 margin-bottom: 12px;
+                border-bottom: 1px solid #f1f5f9;
+                padding-bottom: 4px;
+            }
+
+            /* --- LEFT COLUMN STYLES --- */
+            .contact-item {
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: 12px;
+                margin-bottom: 12px;
+                font-size: 13px;
+                color: #334155;
+                font-weight: 500;
+            }
+            .contact-icon {
+                width: 24px;
+                height: 24px;
+                background: #f1f5f9; /* Light square */
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                font-weight: 700;
+                color: #64748b;
+            }
+
+            .address-box {
+                background: #f8fafc; /* Very light grey bg */
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 10px;
+            }
+            .address-label {
+                font-size: 10px;
+                font-weight: 700;
+                color: #64748b;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+            }
+            .address-val {
+                font-size: 12px;
+                color: #334155;
+                line-height: 1.4;
+            }
+
+            .emergency-card {
+                background: #fff1f2; /* Pinkish bg */
+                border-left: 3px solid #fecaca;
+                padding: 10px;
+                border-radius: 0 6px 6px 0;
+                margin-bottom: 8px;
+            }
+            .ec-name { color: #be123c; font-weight: 700; font-size: 12px; }
+            .ec-role { color: #e11d48; font-size: 10px; margin-bottom: 2px; }
+            .ec-phone { color: #be123c; font-size: 12px; font-weight: 500; }
+
+            /* --- RIGHT COLUMN STYLES --- */
+            .grid-2 {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                column-gap: 20px;
+                row-gap: 15px;
             }
             
-            /* Key-Value Pairs */
-            .kv-group { margin-bottom: 12px; }
-            .kv-label { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px; display: block; }
-            .kv-value { font-size: 12px; font-weight: 500; color: #0f172a; line-height: 1.4; word-break: break-word; }
-            .kv-value.mono { font-family: 'Courier New', monospace; letter-spacing: -0.5px; background: #f8fafc; padding: 2px 4px; border-radius: 4px; display: inline-block; }
+            .field-group {
+                margin-bottom: 5px;
+            }
+            .label {
+                font-size: 10px;
+                font-weight: 700;
+                color: #64748b; /* Grey Label */
+                text-transform: uppercase;
+                margin-bottom: 4px;
+                display: block;
+            }
+            .value {
+                font-size: 13px;
+                font-weight: 600;
+                color: #0f172a; /* Dark Value */
+                line-height: 1.3;
+            }
+            .mono-bg {
+                font-family: monospace;
+                background: #f1f5f9;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 12px;
+            }
 
-            /* Address Box */
-            .address-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
-            .address-type { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
-            .address-text { font-size: 11px; color: #334155; line-height: 1.4; }
+            .passport-box {
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                padding: 15px;
+                background: #fff;
+            }
 
-            /* Contact Items */
-            .contact-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 11px; color: #334155; }
-            .contact-icon { width: 24px; height: 24px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #64748b; flex-shrink: 0; }
+            .finance-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 8px 0;
+                border-bottom: 1px solid #f8fafc;
+                font-size: 12px;
+            }
+            .finance-label { color: #64748b; font-weight: 600; }
+            .finance-val { color: #0f172a; font-weight: 600; text-align: right; }
             
-            /* File Grid */
-            .files-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-            .file-card { 
-                background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; 
-                display: flex; align-items: center; gap: 10px; 
-                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            .footer {
+                margin-top: auto;
+                text-align: right;
+                font-size: 9px;
+                color: #94a3b8;
+                padding-top: 20px;
+                border-top: 1px solid #f1f5f9;
             }
-            .file-type-icon { 
-                width: 32px; height: 32px; background: #f0f9ff; color: #0369a1; 
-                border-radius: 6px; display: flex; align-items: center; justify-content: center; 
-                font-weight: 800; font-size: 10px; text-transform: uppercase;
-            }
-            .file-details { flex: 1; min-width: 0; }
-            .file-name { font-size: 11px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .file-size { font-size: 9px; color: #94a3b8; }
-
-            /* Finance Table */
-            .finance-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            .finance-table td { padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
-            .finance-table td:first-child { color: #64748b; font-weight: 600; width: 40%; }
-            .finance-table td:last-child { text-align: right; color: #0f172a; font-weight: 500; }
-            .finance-table tr:last-child td { border-bottom: none; }
-
-            /* Emergency Contacts */
-            .emergency-card { border-left: 3px solid #fecaca; background: #fff1f2; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-bottom: 8px; }
-            .ec-name { font-weight: 700; color: #881337; font-size: 11px; }
-            .ec-relation { font-size: 10px; color: #9f1239; margin-bottom: 2px; }
-            .ec-phone { font-size: 11px; color: #be123c; font-weight: 500; }
 
           </style>
         </head>
         <body>
           <div class="page">
              
-             <!-- Header -->
-             <div class="header-section">
-                <div class="photo-container">
-                    ${emp.photo_url ? `<img src="${emp.photo_url}" />` : '<div class="photo-placeholder">HR</div>'}
-                </div>
-                <div class="header-details">
-                    <h1>${emp.full_name}</h1>
-                    <h2>${emp.position}</h2>
-                    <div class="badges">
-                        <span class="badge highlight">ID: ${emp.id.substring(0,8)}</span>
+             <!-- HEADER -->
+             <div class="header">
+                 <img src="${emp.photo_url || 'https://via.placeholder.com/150'}" class="photo" />
+                 <div class="header-info">
+                     <h1>${emp.full_name}</h1>
+                     <h2>${emp.position || 'Должность не указана'}</h2>
+                     <div class="badges">
+                        <span class="badge blue">ID: ${emp.id.substring(0,8)}</span>
                         ${emp.nickname ? `<span class="badge">NIK: ${emp.nickname}</span>` : ''}
-                        <span class="badge">Joined: ${emp.join_date || 'N/A'}</span>
-                    </div>
-                </div>
+                        <span class="badge">Joined: ${emp.join_date || '-'}</span>
+                     </div>
+                 </div>
              </div>
 
-             <div class="content-grid">
+             <div class="container">
                 
-                <!-- Sidebar (Left) -->
+                <!-- LEFT SIDEBAR -->
                 <div class="sidebar">
                     
                     <div class="section">
-                        <div class="section-title">Contacts</div>
-                        ${emp.phone ? `
-                        <div class="contact-row">
-                            <div class="contact-icon">Ph</div>
-                            <span>${emp.phone}</span>
-                        </div>` : ''}
-                        ${emp.email ? `
-                        <div class="contact-row">
-                            <div class="contact-icon">@</div>
-                            <span>${emp.email}</span>
-                        </div>` : ''}
-                        ${emp.telegram ? `
-                        <div class="contact-row">
-                            <div class="contact-icon">Tg</div>
-                            <span>${emp.telegram}</span>
-                        </div>` : ''}
-                         ${emp.whatsapp ? `
-                        <div class="contact-row">
-                            <div class="contact-icon">Wa</div>
-                            <span>${emp.whatsapp}</span>
-                        </div>` : ''}
+                        <div class="section-title">CONTACTS</div>
+                        ${emp.phone ? `<div class="contact-item"><div class="contact-icon">Ph</div>${emp.phone}</div>` : ''}
+                        ${emp.email ? `<div class="contact-item"><div class="contact-icon">@</div>${emp.email}</div>` : ''}
+                        ${emp.telegram ? `<div class="contact-item"><div class="contact-icon">Tg</div>${emp.telegram}</div>` : ''}
+                        ${emp.whatsapp ? `<div class="contact-item"><div class="contact-icon">Wa</div>${emp.whatsapp}</div>` : ''}
                     </div>
 
                     <div class="section">
-                        <div class="section-title">Residence</div>
+                        <div class="section-title">RESIDENCE</div>
                         <div class="address-box">
-                            <div class="address-type">Actual Address</div>
-                            <div class="address-text">${emp.actual_address || 'Not specified'}</div>
+                            <div class="address-label">ACTUAL ADDRESS</div>
+                            <div class="address-val">${emp.actual_address || '-'}</div>
                         </div>
                         <div class="address-box">
-                            <div class="address-type">Registration</div>
-                            <div class="address-text">${emp.registration_address || 'Same as actual'}</div>
+                            <div class="address-label">REGISTRATION</div>
+                            <div class="address-val">${emp.registration_address || '-'}</div>
                         </div>
                     </div>
 
                     <div class="section">
-                        <div class="section-title">Emergency</div>
-                        ${emp.emergency_contacts && emp.emergency_contacts.length > 0 ? 
+                        <div class="section-title">EMERGENCY</div>
+                         ${emp.emergency_contacts && emp.emergency_contacts.length > 0 ? 
                             emp.emergency_contacts.map(c => `
                                 <div class="emergency-card">
                                     <div class="ec-name">${c.name}</div>
-                                    <div class="ec-relation">${c.relation}</div>
+                                    <div class="ec-role">${c.relation}</div>
                                     <div class="ec-phone">${c.phone}</div>
                                 </div>
-                            `).join('') : '<span style="font-size:10px; color:#94a3b8">No records</span>'}
+                            `).join('') : '<div style="font-size:11px; color:#94a3b8">Нет контактов</div>'}
                     </div>
 
                 </div>
 
-                <!-- Main (Right) -->
+                <!-- RIGHT MAIN -->
                 <div class="main">
                     
-                    <!-- Organization & Basic -->
                     <div class="section">
-                         <div class="section-title">Organization & Identity</div>
-                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                             <div class="kv-group">
-                                <span class="kv-label">Department</span>
-                                <span class="kv-value">${emp.department?.map(d => ORGANIZATION_STRUCTURE[d]?.name).join(', ') || '-'}</span>
-                             </div>
-                             <div class="kv-group">
-                                <span class="kv-label">Sub-Department</span>
-                                <span class="kv-value">${emp.subdepartment?.map(s => {
+                        <div class="section-title">ORGANIZATION & IDENTITY</div>
+                        <div class="grid-2">
+                            <div>
+                                <span class="label">DEPARTMENT</span>
+                                <div class="value">${emp.department?.map(d => ORGANIZATION_STRUCTURE[d]?.name.split('.')[1] || '').join(', ') || '-'}</div>
+                            </div>
+                            <div>
+                                <span class="label">SUB-DEPARTMENT</span>
+                                <div class="value">${emp.subdepartment?.map(s => {
                                      const deptId = emp.department?.[0];
                                      return deptId ? ORGANIZATION_STRUCTURE[deptId]?.departments?.[s]?.name : s;
-                                }).join(', ') || '-'}</span>
-                             </div>
-                         </div>
-                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 10px;">
-                             <div class="kv-group">
-                                <span class="kv-label">Birth Date</span>
-                                <span class="kv-value">${emp.birth_date || '-'}</span>
-                             </div>
-                             <div class="kv-group">
-                                <span class="kv-label">INN</span>
-                                <span class="kv-value mono">${emp.inn || '-'}</span>
-                             </div>
-                         </div>
-                    </div>
-
-                    <!-- Documents -->
-                    <div class="section">
-                        <div class="section-title">Passport Details</div>
-                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
-                                <div class="kv-group" style="margin:0;">
-                                    <span class="kv-label">Series & Number</span>
-                                    <span class="kv-value mono" style="font-size:13px;">${emp.passport_number || '-'}</span>
-                                </div>
-                                <div class="kv-group" style="margin:0;">
-                                    <span class="kv-label">Date of Issue</span>
-                                    <span class="kv-value">${emp.passport_date || '-'}</span>
-                                </div>
-                             </div>
-                             <div class="kv-group" style="margin:0;">
-                                <span class="kv-label">Issued By</span>
-                                <span class="kv-value">${emp.passport_issuer || '-'}</span>
-                             </div>
+                                }).join(', ') || '-'}</div>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <span class="label">BIRTH DATE</span>
+                                <div class="value">${emp.birth_date || '-'}</div>
+                            </div>
+                             <div style="margin-top: 10px;">
+                                <span class="label">INN</span>
+                                <div class="value"><span class="mono-bg">${emp.inn || '-'}</span></div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Finance -->
                     <div class="section">
-                        <div class="section-title">Finance</div>
-                        <table class="finance-table">
-                            <tr>
-                                <td>Bank Name</td>
-                                <td>${emp.bank_name || '-'}</td>
-                            </tr>
-                            <tr>
-                                <td>Account / Card</td>
-                                <td>${emp.bank_details || '-'}</td>
-                            </tr>
-                             <tr>
-                                <td>Crypto Wallet (${emp.crypto_network || 'NET'})</td>
-                                <td style="font-family:monospace;">${emp.crypto_wallet || '-'}</td>
-                            </tr>
-                        </table>
+                        <div class="section-title">PASSPORT DETAILS</div>
+                        <div class="passport-box">
+                             <div class="grid-2">
+                                <div>
+                                    <span class="label">SERIES & NUMBER</span>
+                                    <div class="value"><span class="mono-bg">${emp.passport_number || '-'}</span></div>
+                                </div>
+                                <div>
+                                    <span class="label">DATE OF ISSUE</span>
+                                    <div class="value">${emp.passport_date || '-'}</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 15px;">
+                                <span class="label">ISSUED BY</span>
+                                <div class="value">${emp.passport_issuer || '-'}</div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Files -->
-                    ${emp.attachments && emp.attachments.length > 0 ? `
+                    ${emp.foreign_passport ? `
                     <div class="section">
-                        <div class="section-title">Attached Files</div>
-                        <div class="files-grid">
-                             ${emp.attachments.slice(0, 8).map(f => `
-                                <div class="file-card">
-                                    <div class="file-type-icon">${f.file_type.split('/')[1] || 'FILE'}</div>
-                                    <div class="file-details">
-                                        <div class="file-name">${f.file_name}</div>
-                                        <div class="file-size">${formatFileSize(f.file_size)}</div>
-                                    </div>
+                        <div class="section-title">FOREIGN PASSPORT</div>
+                        <div class="passport-box">
+                             <div class="grid-2">
+                                <div>
+                                    <span class="label">NUMBER</span>
+                                    <div class="value"><span class="mono-bg">${emp.foreign_passport}</span></div>
                                 </div>
-                            `).join('')}
+                                <div>
+                                    <span class="label">VALID UNTIL / ISSUED</span>
+                                    <div class="value">${emp.foreign_passport_date || '-'}</div>
+                                </div>
+                            </div>
+                             <div style="margin-top: 15px;">
+                                <span class="label">AUTHORITY</span>
+                                <div class="value">${emp.foreign_passport_issuer || '-'}</div>
+                            </div>
                         </div>
-                        ${emp.attachments.length > 8 ? `<div style="text-align:center; font-size:9px; color:#94a3b8; margin-top:5px;">+ ${emp.attachments.length - 8} more files</div>` : ''}
-                    </div>` : ''}
+                    </div>
+                    ` : ''}
 
-                    <!-- Notes -->
-                    ${emp.additional_info ? `
                     <div class="section">
-                        <div class="section-title">Notes</div>
-                        <div style="font-size:11px; background:#f8fafc; padding:10px; border-radius:8px; line-height:1.5; color:#475569;">
-                            ${emp.additional_info}
+                        <div class="section-title">FINANCE</div>
+                        <div class="finance-row">
+                            <span class="finance-label">Bank Name</span>
+                            <span class="finance-val">${emp.bank_name || 'Не указан'}</span>
                         </div>
-                    </div>` : ''}
+                        <div class="finance-row">
+                            <span class="finance-label">Account / Card</span>
+                            <span class="finance-val">${emp.bank_details || '-'}</span>
+                        </div>
+                         <div class="finance-row">
+                            <span class="finance-label">Crypto Wallet (${emp.crypto_network || 'NET'})</span>
+                            <span class="finance-val">${emp.crypto_wallet || '-'}</span>
+                        </div>
+                    </div>
 
                 </div>
+
              </div>
 
              <div class="footer">
-                <span>CONFIDENTIAL PERSONNEL RECORD</span>
-                <span>Generated on ${new Date().toLocaleDateString()}</span>
+                CONFIDENTIAL PERSONNEL RECORD • Generated on ${format(new Date(), 'dd.MM.yyyy')}
              </div>
 
           </div>
-          <script>window.onload = () => window.print();</script>
+          <script>
+            window.onload = () => { setTimeout(() => window.print(), 500); };
+          </script>
         </body>
       </html>
     `;
@@ -449,6 +493,8 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
     if (printWindow) {
         printWindow.document.write(printContent);
         printWindow.document.close();
+    } else {
+        alert("Pop-up blocked. Please allow pop-ups for this site to print.");
     }
   };
 

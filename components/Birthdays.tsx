@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ORGANIZATION_STRUCTURE } from '../constants';
 import { Employee as EmployeeType } from '../types';
-import { differenceInDays, format, isToday, addYears, setYear, isSameDay } from 'date-fns';
+import { differenceInDays, format, isToday, addYears, isSameDay } from 'date-fns';
 import { Gift, Calendar, User, Bell } from 'lucide-react';
 
 interface BirthdaysProps {
@@ -17,7 +17,9 @@ const Birthdays: React.FC<BirthdaysProps> = ({ employees }) => {
       .filter(emp => emp.birth_date)
       .map(emp => {
         const birthDate = new Date(emp.birth_date!);
-        let nextBirthday = setYear(birthDate, currentYear);
+        // Manual setYear to avoid import issues
+        let nextBirthday = new Date(birthDate);
+        nextBirthday.setFullYear(currentYear);
         
         if (nextBirthday < today && !isToday(nextBirthday)) {
           nextBirthday = addYears(nextBirthday, 1);
