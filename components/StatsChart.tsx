@@ -35,8 +35,6 @@ const StatsChart: React.FC<StatsChartProps> = ({ values, color = "#3b82f6", inve
   const PADDING_Y = 30;
 
   // --- DATA PREPARATION ---
-  // If isDouble, we use the real value2 from the data object.
-  // If value2 is missing, default to 0 to avoid breaking chart, but ideally should be present.
   
   const allValues = isDouble 
       ? [...sortedValues.map(v => v.value), ...sortedValues.map(v => v.value2 || 0)]
@@ -124,32 +122,56 @@ const StatsChart: React.FC<StatsChartProps> = ({ values, color = "#3b82f6", inve
   };
 
   return (
-    <div className="w-full h-full relative group bg-white select-none rounded-xl overflow-hidden">
+    <div className="w-full h-full relative group bg-white select-none rounded-xl">
         {/* TOOLTIP */}
-        {hoveredIndex !== null && (
-            <div 
-                className="absolute z-20 pointer-events-none bg-slate-900/90 backdrop-blur-sm text-white text-[10px] rounded-lg py-2 px-3 shadow-xl transform -translate-x-1/2 -translate-y-full transition-all duration-75 flex flex-col gap-1 min-w-[100px] border border-slate-700"
-                style={{ 
-                    left: `${(getX(hoveredIndex) / SVG_WIDTH) * 100}%`, 
-                    top: `${(getY(sortedValues[hoveredIndex].value) / SVG_HEIGHT) * 100}%`,
-                    marginTop: '-15px'
-                }}
-            >
-                <div className="font-bold text-xs border-b border-slate-700 pb-1 mb-1 text-center text-slate-300">
-                    {format(new Date(sortedValues[hoveredIndex].date), 'd MMM yyyy')}
-                </div>
-                <div className="flex justify-between gap-3 items-center">
-                    <span className="opacity-70 font-medium">{isDouble ? 'Вал 1:' : 'Значение:'}</span>
-                    <span className="font-mono font-bold text-lg" style={{color: mainColor}}>{sortedValues[hoveredIndex].value.toLocaleString()}</span>
-                </div>
-                {isDouble && (
-                    <div className="flex justify-between gap-3 items-center">
-                        <span className="opacity-70 font-medium">Вал 2:</span>
-                        <span className="font-mono font-bold text-rose-400">{(sortedValues[hoveredIndex].value2 || 0).toLocaleString()}</span>
+        {hoveredIndex !== null && (() => {
+            const point = sortedValues[hoveredIndex];
+            const pxX = getX(hoveredIndex);
+            const pxY = getY(point.value);
+            
+            // Smart Positioning Logic
+            const isNearTop = pxY < (SVG_HEIGHT * 0.4); // If in top 40%
+            const isNearLeft = hoveredIndex < 2;
+            const isNearRight = hoveredIndex > sortedValues.length - 3;
+            
+            // Horizontal shift
+            let transformX = '-50%';
+            let marginLeft = '0px';
+            if (isNearLeft) { transformX = '0%'; marginLeft = '5px'; }
+            if (isNearRight) { transformX = '-100%'; marginLeft = '-5px'; }
+            
+            // Vertical shift (Flip down if near top)
+            // 'mt-3' pushes it down (below point), '-mt-3' pulls it closer when above
+            const verticalClass = isNearTop 
+                ? 'translate-y-2'  // Move Down
+                : '-translate-y-full -mt-3'; // Move Up
+
+            return (
+                <div 
+                    className={`absolute z-50 pointer-events-none bg-slate-800/95 backdrop-blur-sm text-white text-[10px] rounded-lg py-1.5 px-2.5 shadow-xl transition-all duration-75 flex flex-col gap-0.5 min-w-[100px] border border-slate-700 ${verticalClass}`}
+                    style={{ 
+                        left: `${(pxX / SVG_WIDTH) * 100}%`, 
+                        top: `${(pxY / SVG_HEIGHT) * 100}%`,
+                        transform: `translateX(${transformX})`,
+                        marginLeft: marginLeft
+                    }}
+                >
+                    <div className="font-bold text-[9px] uppercase tracking-wider opacity-60 border-b border-slate-600 pb-1 mb-1 text-center">
+                        {format(new Date(point.date), 'd MMM yyyy')}
                     </div>
-                )}
-            </div>
-        )}
+                    <div className="flex justify-between gap-3 items-center">
+                        <span className="opacity-80 font-medium">{isDouble ? 'Вал 1:' : 'Значение:'}</span>
+                        <span className="font-mono font-bold text-sm" style={{color: mainColor}}>{point.value.toLocaleString()}</span>
+                    </div>
+                    {isDouble && (
+                        <div className="flex justify-between gap-3 items-center">
+                            <span className="opacity-80 font-medium">Вал 2:</span>
+                            <span className="font-mono font-bold text-rose-400">{(point.value2 || 0).toLocaleString()}</span>
+                        </div>
+                    )}
+                </div>
+            );
+        })()}
 
         <svg 
             width="100%" 

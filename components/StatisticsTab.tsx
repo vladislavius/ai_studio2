@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import { StatisticDefinition, StatisticValue, WiseCondition, Employee } from '../types';
 import { ORGANIZATION_STRUCTURE, HANDBOOK_STATISTICS } from '../constants';
 import StatsChart from './StatsChart';
-import { TrendingUp, TrendingDown, LayoutDashboard, Info, HelpCircle, Building2, Layers, Calendar, Edit2, X, List, Search, Plus, Trash2, Sliders, Save, AlertCircle, ArrowDownUp, Download, Upload } from 'lucide-react';
+import { TrendingUp, TrendingDown, LayoutDashboard, Info, HelpCircle, Building2, Layers, Calendar, Edit2, X, List, Search, Plus, Trash2, Sliders, Save, AlertCircle, ArrowDownUp, Download, Upload, Maximize2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface StatisticsTabProps {
@@ -93,6 +93,9 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
   const [displayMode, setDisplayMode] = useState<'dashboard' | 'list'>('dashboard');
   const [listSearchTerm, setListSearchTerm] = useState('');
   
+  // EXPANDED VIEW STATE
+  const [expandedStatId, setExpandedStatId] = useState<string | null>(null);
+
   // ADMIN EDIT MODE
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingStatDef, setEditingStatDef] = useState<Partial<StatisticDefinition> | null>(null);
@@ -537,7 +540,8 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
       return (
           <div 
             key={stat.id} 
-            className={`relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[260px] transition-all group ${isEditMode ? 'ring-2 ring-blue-400 ring-offset-2 hover:-translate-y-0' : 'hover:-translate-y-1 hover:shadow-md'}`}
+            onClick={() => !isEditMode && setExpandedStatId(stat.id)}
+            className={`relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[260px] transition-all group ${isEditMode ? 'ring-2 ring-blue-400 ring-offset-2 hover:-translate-y-0' : 'cursor-pointer hover:-translate-y-1 hover:shadow-md'}`}
           >
               <div className="absolute top-0 left-0 bottom-0 w-1" style={{backgroundColor: deptColor}}></div>
               
@@ -566,7 +570,11 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                            </div>
                            <div className="text-[9px] text-slate-400 font-medium truncate mt-0.5">{getOwnerName(stat.owner_id || '')}</div>
                       </div>
-                      {!isEditMode && <button onClick={(e) => { e.stopPropagation(); setInfoCardId(isInfoOpen ? null : stat.id); }} className={`p-1 rounded-md transition-all ${isInfoOpen ? 'bg-slate-800 text-white' : 'text-slate-300 hover:text-slate-600 hover:bg-slate-50'}`}><Info size={14} /></button>}
+                      {!isEditMode && (
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3 text-slate-300">
+                               <Maximize2 size={14} />
+                          </div>
+                      )}
                   </div>
                   <div className="flex items-baseline gap-2 mb-2">
                       <span className="text-2xl font-black text-slate-800 tracking-tight">{current.toLocaleString()}</span>
@@ -577,24 +585,13 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                           </div>
                       )}
                   </div>
-                  <div className={`flex-1 w-full min-h-0 relative ${isAdmin && !isEditMode ? 'cursor-pointer' : ''}`} onClick={() => isAdmin && !isEditMode && handleOpenValues(stat)}>
+                  <div className={`flex-1 w-full min-h-0 relative`}>
                        <StatsChart key={selectedPeriod} values={vals} color={trendColorHex} inverted={stat.inverted} isDouble={stat.is_double} />
                   </div>
                   <div className="absolute bottom-2 right-2 flex gap-1 pointer-events-none opacity-50">
                        {stat.is_favorite && <span className="text-[8px] bg-amber-100 text-amber-700 px-1 rounded font-bold">ГСД</span>}
                        {stat.is_double && <span className="text-[8px] bg-indigo-100 text-indigo-700 px-1 rounded font-bold">2X</span>}
                   </div>
-                  {isInfoOpen && !isEditMode && (
-                      <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 p-4 animate-in fade-in flex flex-col overflow-y-auto custom-scrollbar">
-                           <div className="flex justify-between items-center mb-2"><span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Описание</span><button onClick={() => setInfoCardId(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button></div>
-                           <p className="text-xs text-slate-700 font-medium leading-relaxed mb-3">{stat.description || "Описание отсутствует."}</p>
-                           <div className="mt-auto pt-2 border-t border-slate-100">
-                               <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1 flex items-center gap-1"><HelpCircle size={10}/> Методика</div>
-                               <div className="text-[10px] text-slate-600 bg-slate-50 p-1.5 rounded border border-slate-100 font-medium">{stat.calculation_method || "Прямой ввод."}</div>
-                           </div>
-                           {isAdmin && <button onClick={() => handleOpenValues(stat)} className="mt-3 w-full py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors"><Calendar size={12}/> Внести данные</button>}
-                      </div>
-                  )}
               </div>
           </div>
       );
@@ -722,8 +719,8 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                                           if (def.inverted) isGoodOutcome = !isSlopeUp;
 
                                           return (
-                                              <tr key={def.id} className="hover:bg-blue-50/30 group transition-colors">
-                                                  <td className="px-6 py-3 font-bold text-slate-700">{def.title}</td>
+                                              <tr key={def.id} className="hover:bg-blue-50/30 group transition-colors" onClick={() => setExpandedStatId(def.id)}>
+                                                  <td className="px-6 py-3 font-bold text-slate-700 cursor-pointer">{def.title}</td>
                                                   <td className="px-6 py-2 text-slate-500 text-xs">{getOwnerName(def.owner_id || '')}</td>
                                                   <td className="px-6 py-2">
                                                       <div className="flex items-center gap-2">
@@ -734,7 +731,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                                                       </div>
                                                   </td>
                                                   <td className="px-6 py-2 text-right">
-                                                      {isAdmin && <button onClick={() => handleOpenValues(def)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"><Edit2 size={16}/></button>}
+                                                      {isAdmin && <button onClick={(e) => { e.stopPropagation(); handleOpenValues(def); }} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"><Edit2 size={16}/></button>}
                                                   </td>
                                               </tr>
                                           );
@@ -794,6 +791,92 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
              {displayMode === 'dashboard' ? renderDashboardView() : renderListView()}
         </div>
 
+        {/* --- EXPANDED STAT VIEW MODAL --- */}
+        {expandedStatId && (() => {
+            const stat = definitions.find(d => d.id === expandedStatId);
+            if (!stat) return null;
+            const vals = getFilteredValues(stat.id);
+            const { current, change, slope } = analyzeTrend(vals, stat.inverted);
+            const isSlopeUp = slope > 0;
+            let isGoodOutcome = isSlopeUp;
+            if (stat.inverted) isGoodOutcome = !isSlopeUp;
+            const trendColorHex = isGoodOutcome ? "#10b981" : "#f43f5e";
+            const ownerName = getOwnerName(stat.owner_id || '');
+            const deptColor = ORGANIZATION_STRUCTURE[getParentDeptId(stat.owner_id || 'other')]?.color || '#cbd5e1';
+
+            return (
+                <div className="fixed inset-0 z-[60] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8" onClick={() => setExpandedStatId(null)}>
+                    <div 
+                        className="bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 relative" 
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white z-10">
+                            <div className="flex gap-4">
+                                <div className="w-1.5 self-stretch rounded-full" style={{backgroundColor: deptColor}}></div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h2 className="text-2xl font-black text-slate-800">{stat.title}</h2>
+                                        {stat.inverted && (
+                                            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                                                Обратная
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-sm text-slate-500 font-medium">
+                                        Владелец: <span className="text-slate-700 font-bold">{ownerName}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="text-right flex items-start gap-4">
+                                <div>
+                                    <div className="text-4xl font-black text-slate-900 tracking-tight">{current.toLocaleString()}</div>
+                                    {vals.length > 1 && (
+                                        <div className={`text-sm font-bold flex items-center justify-end gap-1 mt-1 ${isGoodOutcome ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {slope >= 0 ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}
+                                            {Math.abs(change * 100).toFixed(1)}%
+                                        </div>
+                                    )}
+                                </div>
+                                <button onClick={() => setExpandedStatId(null)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
+                                    <X size={20} className="text-slate-500"/>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Chart Area */}
+                        <div className="flex-1 bg-white p-6 min-h-0">
+                            <StatsChart key={selectedPeriod} values={vals} color={trendColorHex} inverted={stat.inverted} isDouble={stat.is_double} />
+                        </div>
+
+                        {/* Footer / Details */}
+                        <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col md:flex-row gap-6">
+                            <div className="flex-1">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Info size={14}/> Описание</h4>
+                                <p className="text-sm text-slate-700 leading-relaxed font-medium">{stat.description || "Описание отсутствует."}</p>
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><HelpCircle size={14}/> Методика Расчета</h4>
+                                <div className="bg-white p-3 rounded-xl border border-slate-200 text-sm text-slate-600 font-medium">
+                                    {stat.calculation_method || "Прямой ввод данных."}
+                                </div>
+                            </div>
+                            {isAdmin && (
+                                <div className="flex flex-col justify-end">
+                                    <button 
+                                        onClick={() => handleOpenValues(stat)} 
+                                        className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
+                                    >
+                                        <Calendar size={18}/> Внести данные
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        })()}
+
         {/* --- STAT DEFINITION MODAL --- */}
         {editingStatDef && (
             <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -823,7 +906,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
 
         {/* --- VALUE ENTRY MODAL (REUSED) --- */}
         {isValueModalOpen && selectedStatForValues && (
-             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+             <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 flex flex-col max-h-[80vh]">
                      <div className="flex justify-between items-center mb-4 border-b pb-4">
                         <div><h3 className="font-bold text-sm text-slate-800 line-clamp-1">{selectedStatForValues.title}</h3><p className="text-xs text-slate-400">Ввод данных</p></div><button onClick={() => setIsValueModalOpen(false)}><X size={18} className="text-slate-400"/></button>
