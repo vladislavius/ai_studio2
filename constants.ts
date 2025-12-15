@@ -500,8 +500,6 @@ export const ORGANIZATION_STRUCTURE: { [key: string]: Department } = {
 export const ROLE_STAT_TEMPLATES: Record<string, { title: string }[]> = {
     'dept2_6': [
         { title: 'Личный объем продаж (валовый)' },
-        { title: 'Количество звонков/контактов' },
-        { title: 'Количество проведенных встреч' },
         { title: 'Конверсия в оплату' }
     ],
     'dept4_12': [

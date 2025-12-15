@@ -15,11 +15,12 @@ const StatsChart: React.FC<StatsChartProps> = ({ values, color = "#3b82f6", inve
 
   const sortedValues = useMemo(() => {
     if (!values) return [];
-    return [...values].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Ensure we don't have nulls or incomplete objects
+    return [...values].filter(v => v && v.date && v.value !== undefined && v.value !== null).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [values]);
 
   // Handle empty state
-  if (!values || values.length < 2) {
+  if (!sortedValues || sortedValues.length < 2) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Недостаточно данных</p>

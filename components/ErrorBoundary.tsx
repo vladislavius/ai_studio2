@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
 
 interface Props {
@@ -10,11 +10,14 @@ interface State {
   error: Error | null;
 }
 
-class ErrorBoundary extends React.Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null,
-  };
+class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+    };
+  }
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -24,7 +27,7 @@ class ErrorBoundary extends React.Component<Props, State> {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  public render() {
+  public render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
@@ -36,7 +39,7 @@ class ErrorBoundary extends React.Component<Props, State> {
             </div>
             <h1 className="text-xl font-bold text-center text-slate-800 mb-2">Произошла ошибка</h1>
             <p className="text-sm text-slate-500 text-center mb-6">
-              Система столкнулась с непредвиденной ошибкой. Попробуйте обновить страницу.
+              Система столкнулась с непредвиденной ошибкой.
             </p>
             <div className="bg-slate-100 p-3 rounded-lg text-xs font-mono text-slate-600 mb-6 overflow-auto max-h-32 border border-slate-200">
                 {this.state.error?.message || 'Unknown Error'}

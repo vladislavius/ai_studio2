@@ -17,7 +17,29 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+      :root {
+        color-scheme: light; /* Force light mode scrollbars/controls */
+      }
+      html, body {
+        background-color: #f8fafc;
+        color: #0f172a;
+      }
       body { font-family: 'Inter', sans-serif; }
+      
+      /* FORCE WHITE INPUTS (Aggressive Reset for Black Fields) */
+      input, textarea, select {
+        background-color: #ffffff !important;
+        color: #1e293b !important; /* slate-800 */
+        border-color: #e2e8f0;
+        -webkit-text-fill-color: #1e293b !important;
+        color-scheme: light !important;
+      }
+      
+      input::placeholder, textarea::placeholder {
+        color: #94a3b8 !important; /* slate-400 */
+        -webkit-text-fill-color: #94a3b8 !important;
+      }
+
       /* Custom scrollbar for sidebar */
       .custom-scrollbar::-webkit-scrollbar { width: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

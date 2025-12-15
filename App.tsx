@@ -4,10 +4,11 @@ import { Users, Briefcase, Cake, FileDown, Plus, Search, Menu, LayoutGrid, Datab
 import EmployeeList from './components/EmployeeList';
 import EmployeeModal from './components/EmployeeModal';
 import Birthdays from './components/Birthdays';
-import Settings from './components/Settings'; // New Import
+import Settings from './components/Settings'; 
 import StatisticsTab from './components/StatisticsTab';
 import OrgChart from './components/OrgChart';
 import Auth from './components/Auth';
+import ConfirmationModal from './components/ConfirmationModal';
 import { ORGANIZATION_STRUCTURE, ADMIN_EMAILS } from './constants';
 import { Employee, ViewMode, Attachment } from './types';
 import { supabase } from './supabaseClient';
@@ -66,7 +67,6 @@ const DEMO_EMPLOYEES: Employee[] = [
 ];
 
 // --- SORT ORDER CONSTANT ---
-// Order: Owner -> 7 (Admin) -> 1 -> 2 -> 3 -> 4 -> 5 -> 6
 const DEPT_SORT_ORDER = ['owner', 'dept7', 'dept1', 'dept2', 'dept3', 'dept4', 'dept5', 'dept6'];
 
 function App() {
@@ -79,9 +79,9 @@ function App() {
   
   // Navigation State
   const [currentView, setCurrentView] = useState<ViewMode>('org_chart'); 
-  const [employeeSubView, setEmployeeSubView] = useState<'list' | 'birthdays'>('list'); // Removed 'data'
+  const [employeeSubView, setEmployeeSubView] = useState<'list' | 'birthdays'>('list');
   const [searchTerm, setSearchTerm] = useState('');
-  const [deptFilter, setDeptFilter] = useState('all'); // New: Department Filter State
+  const [deptFilter, setDeptFilter] = useState('all');
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   
   // Sidebar State
@@ -92,7 +92,14 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
-  // UPDATED: Admin check uses the global list from constants.ts
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+      isOpen: boolean;
+      title: string;
+      message: string;
+      onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
   const isAdmin = isOffline || (session?.user?.email && ADMIN_EMAILS.includes(session.user.email));
 
   useEffect(() => {
@@ -122,7 +129,6 @@ function App() {
 
   const handleBypassAuth = () => {
       setIsOffline(true);
-      // Offline mode uses the primary admin email
       setSession({ user: { email: ADMIN_EMAILS[0] } });
       setEmployees(DEMO_EMPLOYEES);
       setAuthChecking(false);
@@ -136,7 +142,6 @@ function App() {
       const { data: employeesData, error: employeesError } = await supabase.from('employees').select('*').order('created_at', { ascending: false });
       if (employeesError) throw employeesError;
       
-      // SAFE ATTACHMENT FETCHING (Prevents crash if table missing)
       let attachmentsData: any[] = [];
       try {
           const { data: att, error: attError } = await supabase.from('employee_attachments').select('*');
@@ -154,7 +159,8 @@ function App() {
       }
     } catch (error: any) {
       console.error('Error fetching employees:', error);
-      alert('Ошибка загрузки сотрудников: ' + error.message);
+      // Removed native alert to prevent sandbox errors
+      console.error('Ошибка загрузки сотрудников: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -167,40 +173,39 @@ function App() {
       setSession(null);
   };
 
-  // --- FILTERING & SORTING LOGIC ---
   const filteredEmployees = employees
     .filter(emp => {
-        // 1. Search Filter
         const matchesSearch = emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                               emp.position.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        // 2. Department Filter
         const matchesDept = deptFilter === 'all' || emp.department?.includes(deptFilter);
-        
         return matchesSearch && matchesDept;
     })
     .sort((a, b) => {
-        // 3. Sort by Department Hierarchy
         const deptA = a.department?.[0] || 'other';
         const deptB = b.department?.[0] || 'other';
-
         const indexA = DEPT_SORT_ORDER.indexOf(deptA);
         const indexB = DEPT_SORT_ORDER.indexOf(deptB);
-        
-        // Handle cases where dept might not be in the list (put them at end)
         const safeIndexA = indexA === -1 ? 999 : indexA;
         const safeIndexB = indexB === -1 ? 999 : indexB;
 
-        if (safeIndexA !== safeIndexB) {
-            return safeIndexA - safeIndexB;
-        }
-
-        // Secondary Sort: Name
+        if (safeIndexA !== safeIndexB) return safeIndexA - safeIndexB;
         return a.full_name.localeCompare(b.full_name);
     });
 
+  const sanitizePayload = (emp: Employee) => {
+      const { attachments, ...data } = emp;
+      const payload: any = { ...data };
+      const dateFields = ['birth_date', 'join_date', 'passport_date', 'foreign_passport_date'];
+      dateFields.forEach(field => {
+          if (payload[field] === '') {
+              payload[field] = null;
+          }
+      });
+      return { payload, attachments };
+  };
+
   const handleSaveEmployee = async (emp: Employee) => {
-    if (!isAdmin) return; // Double check
+    if (!isAdmin) return;
 
     if (isOffline) {
         setEmployees(prev => {
@@ -213,18 +218,18 @@ function App() {
     }
     if (!supabase) return;
     
-    // Ensure we don't send attachments array to 'employees' table directly if Supabase is strict, 
-    // but usually extra fields are ignored or handled. Ideally separate them.
-    const { attachments, ...employeeData } = emp;
+    const { payload, attachments } = sanitizePayload(emp);
     
     try {
-        const { error: empError } = await supabase.from('employees').upsert(employeeData);
-        if (empError) throw empError;
+        const { error: empError } = await supabase.from('employees').upsert(payload);
+        
+        if (empError) {
+            console.error("Supabase Save Error:", empError);
+            return;
+        }
         
         if (attachments && attachments.length > 0) {
             try {
-                // Check if table exists/accessible by trying a select
-                // Then perform logic
                 const { data: existingDocs } = await supabase.from('employee_attachments').select('id').eq('employee_id', emp.id);
                 const existingIds = existingDocs?.map(d => d.id) || [];
                 const newIds = attachments.map(a => a.id);
@@ -232,7 +237,6 @@ function App() {
                 
                 if (idsToDelete.length > 0) await supabase.from('employee_attachments').delete().in('id', idsToDelete);
                 
-                // Only upsert ones that have all required fields (basic check)
                 const attachmentsToUpsert = attachments
                     .filter(a => a.file_name && a.public_url)
                     .map(a => ({ 
@@ -254,20 +258,60 @@ function App() {
         await fetchEmployees();
         setIsModalOpen(false); setEditingEmployee(null);
     } catch (error: any) {
-        alert('Error saving data: ' + error.message);
+        console.error('Critical Error:', error.message);
     }
   };
 
-  const handleDeleteEmployee = async (id: string) => {
-    if (!isAdmin) return;
-    if (!confirm('Are you sure you want to delete this employee?')) return;
-    if (isOffline) { setEmployees(prev => prev.filter(e => e.id !== id)); return; }
+  // REPLACED NATIVE CONFIRM WITH CUSTOM MODAL
+  const handleDeleteEmployeeRequest = (id: string) => {
+      if (!isAdmin) return;
+      const empName = employees.find(e => e.id === id)?.full_name || 'этого сотрудника';
+      
+      setConfirmModal({
+          isOpen: true,
+          title: 'Удаление сотрудника',
+          message: `Вы собираетесь удалить ${empName}.\nЭто действие удалит карточку, все файлы и личные статистики.\nВосстановить данные будет невозможно.`,
+          onConfirm: () => executeDeleteEmployee(id)
+      });
+  };
+
+  const executeDeleteEmployee = async (id: string) => {
+    setConfirmModal(prev => ({ ...prev, isOpen: false })); // Close modal immediately
+    
+    if (isOffline) { 
+        setEmployees(prev => prev.filter(e => e.id !== id)); 
+        return; 
+    }
+    
     if (!supabase) return;
+
     try {
+        setIsLoading(true);
+        // MANUAL CASCADE DELETE to prevent FK constraints issues
+        
+        // 1. Delete Attachments
+        await supabase.from('employee_attachments').delete().eq('employee_id', id);
+
+        // 2. Delete Stats (Values then Definitions)
+        const { data: stats } = await supabase.from('statistics_definitions').select('id').eq('owner_id', id);
+        if (stats && stats.length > 0) {
+            const statIds = stats.map(s => s.id);
+            await supabase.from('statistics_values').delete().in('definition_id', statIds);
+            await supabase.from('statistics_definitions').delete().in('id', statIds);
+        }
+
+        // 3. Delete Employee
         const { error } = await supabase.from('employees').delete().eq('id', id);
+        
         if (error) throw error;
+        
         setEmployees(prev => prev.filter(e => e.id !== id));
-    } catch (error: any) { alert('Error deleting: ' + error.message); }
+    } catch (error: any) { 
+        console.error("Delete failed", error);
+        // Use console instead of alert
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const handleEditClick = (emp: Employee) => { 
@@ -310,6 +354,16 @@ function App() {
             onClick={() => setIsMobileMenuOpen(false)}
           ></div>
       )}
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        isDanger={true}
+        confirmLabel="Удалить"
+      />
 
       {/* Sidebar */}
       <aside 
@@ -497,7 +551,7 @@ function App() {
                             </p>
                           </div>
                         </div>
-                        <EmployeeList employees={filteredEmployees} onEdit={handleEditClick} onDelete={handleDeleteEmployee} />
+                        <EmployeeList employees={filteredEmployees} onEdit={handleEditClick} onDelete={handleDeleteEmployeeRequest} />
                       </div>
                     )}
                     {employeeSubView === 'birthdays' && (

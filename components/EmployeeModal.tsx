@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ORGANIZATION_STRUCTURE, ROLE_STAT_TEMPLATES } from '../constants';
-import { X, Save, Upload, FileText, Trash2, Plus, TrendingUp, TrendingDown, CheckCircle2, Printer, Download, Link as LinkIcon, Image as ImageIcon, Calendar, Info, HelpCircle, ArrowDownUp, AlertCircle, Phone, User, HeartPulse, File, Lock, DownloadCloud, Link2, Unlink, Sparkles, Copy } from 'lucide-react';
+import { X, Save, Upload, FileText, Trash2, Plus, TrendingUp, TrendingDown, CheckCircle2, Printer, Download, Link as LinkIcon, Image as ImageIcon, Calendar, Info, HelpCircle, ArrowDownUp, AlertCircle, Phone, User, HeartPulse, File, Lock, DownloadCloud, Link2, Unlink, Sparkles, Copy, Edit2, Layers, Loader2 } from 'lucide-react';
 import { Employee as EmployeeType, Attachment, EmergencyContact, StatisticDefinition, StatisticValue, WiseCondition } from '../types';
 import { supabase } from '../supabaseClient';
 import StatsChart from './StatsChart';
 import { format, subDays, getDay } from 'date-fns';
+import ConfirmationModal from './ConfirmationModal';
 
 interface EmployeeModalProps {
   isOpen: boolean;
@@ -132,31 +133,33 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
   
   // Stat Management State (Create/Assign)
   const [showStatManager, setShowStatManager] = useState(false);
-  const [statManagerMode, setStatManagerMode] = useState<'create' | 'assign'>('create');
+  const [statManagerMode, setStatManagerMode] = useState<'create' | 'assign'>('assign');
   const [newStatData, setNewStatData] = useState({ title: '', description: '', inverted: false, is_double: false, calculation_method: '' });
-  const [availableStatsToAssign, setAvailableStatsToAssign] = useState<StatisticDefinition[]>([]);
-  const [selectedStatIdToAssign, setSelectedStatIdToAssign] = useState('');
+  
+  // Context-Aware Stats (Available to Assign)
+  const [departmentStats, setDepartmentStats] = useState<{deptName: string, stats: StatisticDefinition[]}[]>([]);
+  
+  // Editing State
+  const [editingStatId, setEditingStatId] = useState<string | null>(null);
+
+  // Confirm Modal State (Local for statistics actions)
+  const [confirmModal, setConfirmModal] = useState<{
+      isOpen: boolean;
+      title: string;
+      message: string;
+      onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  const isNewEmployee = !initialData;
 
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
         setFormData(prev => {
-            // If editing same employee, don't hard reset if we have local changes (like new photo)
             if (prev.id === initialData.id && prev.photo_url !== initialData.photo_url) {
-                 return {
-                     ...DEFAULT_EMPLOYEE,
-                     ...initialData,
-                     photo_url: prev.photo_url || initialData.photo_url,
-                     actual_address: initialData.actual_address || '',
-                     registration_address: initialData.registration_address || ''
-                 };
+                 return { ...DEFAULT_EMPLOYEE, ...initialData, photo_url: prev.photo_url || initialData.photo_url };
             }
-            return { 
-                ...DEFAULT_EMPLOYEE, 
-                ...initialData,
-                actual_address: initialData.actual_address || '',
-                registration_address: initialData.registration_address || ''
-            };
+            return { ...DEFAULT_EMPLOYEE, ...initialData };
         });
         fetchPersonalStats(initialData.id);
       } else {
@@ -171,6 +174,13 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
       setNewStatDate(getNearestThursday());
     }
   }, [isOpen, initialData?.id]);
+
+  // When opening Stat Manager, fetch relevant dept stats
+  useEffect(() => {
+      if (showStatManager && supabase) {
+          fetchRelevantDepartmentStats();
+      }
+  }, [showStatManager, formData.department, formData.subdepartment]);
 
   const fetchPersonalStats = async (empId: string) => {
       setIsLoadingStats(true);
@@ -190,8 +200,6 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
           }
       }
 
-      // If no real data found AND we are in a demo mode/offline without data, inject DEMO data.
-      // NOTE: Logic changed slightly. If user is online but has no stats, show empty state, not demo.
       if (!supabase && !foundData) {
           const demo = generateDemoPersonalStats();
           setStatsDefinitions(demo.map(d => d.def as StatisticDefinition));
@@ -205,90 +213,138 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
       setIsLoadingStats(false);
   };
 
-  const fetchAllAvailableStats = async () => {
+  // Fetch statistics belonging to the user's assigned departments
+  const fetchRelevantDepartmentStats = async () => {
       if (!supabase) return;
-      // Fetch stats that are NOT owned by this employee currently
-      const { data } = await supabase.from('statistics_definitions').select('*').neq('owner_id', formData.id).order('title');
+      const deptIds = [...(formData.department || []), ...(formData.subdepartment || [])];
+      
+      if (deptIds.length === 0) {
+          setDepartmentStats([]);
+          return;
+      }
+
+      const { data } = await supabase.from('statistics_definitions').select('*').in('owner_id', deptIds);
+      
       if (data) {
-          setAvailableStatsToAssign(data);
+          const grouped: Record<string, StatisticDefinition[]> = {};
+          
+          data.forEach(stat => {
+              const alreadyHas = statsDefinitions.some(s => s.title === stat.title);
+              if (alreadyHas) return;
+
+              const deptName = ORGANIZATION_STRUCTURE[stat.owner_id || '']?.name || 
+                               Object.values(ORGANIZATION_STRUCTURE).find(d => d.departments?.[stat.owner_id || ''])?.departments?.[stat.owner_id || '']?.name || 
+                               'Неизвестный отдел';
+              
+              if (!grouped[deptName]) grouped[deptName] = [];
+              grouped[deptName].push(stat);
+          });
+
+          setDepartmentStats(Object.entries(grouped).map(([deptName, stats]) => ({ deptName, stats })));
       }
   };
 
-  const handleCreatePersonalStat = async (prefillTitle?: string) => {
-      const titleToUse = prefillTitle || newStatData.title;
-      if (!titleToUse) return alert("Введите название статистики");
-      if (!supabase) return alert("Доступно только в онлайн режиме");
+  const handleCreatePersonalStat = async (template?: Partial<StatisticDefinition>) => {
+      const titleToUse = template?.title || newStatData.title;
+      if (!titleToUse) { console.warn("Введите название статистики"); return; }
+      if (!supabase) return;
 
       const newStat: Partial<StatisticDefinition> = {
           title: titleToUse,
-          description: newStatData.description || 'Личная статистика сотрудника',
-          owner_id: formData.id, // Assign to current employee
+          description: template?.description || newStatData.description || 'Личная статистика',
+          owner_id: formData.id,
           type: 'employee',
-          inverted: newStatData.inverted,
-          is_double: newStatData.is_double,
-          calculation_method: newStatData.calculation_method
+          inverted: template?.inverted ?? newStatData.inverted,
+          is_double: template?.is_double ?? newStatData.is_double,
+          calculation_method: template?.calculation_method ?? newStatData.calculation_method
       };
 
-      const { data, error } = await supabase.from('statistics_definitions').insert([newStat]).select();
-      if (error) {
-          alert("Ошибка создания: " + error.message);
-      } else if (data && data.length > 0) {
-          setStatsDefinitions(prev => [...prev, data[0]]);
-          // Only close if it wasn't a template click
-          if(!prefillTitle) {
-              setShowStatManager(false);
-              setNewStatData({ title: '', description: '', inverted: false, is_double: false, calculation_method: '' });
-          }
-      } else {
-          fetchPersonalStats(formData.id);
-          setShowStatManager(false);
+      try {
+        const { data, error } = await supabase.from('statistics_definitions').insert([newStat]).select();
+        
+        if (error) {
+            console.error("Failed to create stat:", error);
+        } else if (data && data.length > 0) {
+            const createdStat = data[0];
+            if (createdStat && createdStat.id) {
+                setStatsDefinitions(prev => [...prev, createdStat]);
+                if(!template) { 
+                    setShowStatManager(false);
+                    setNewStatData({ title: '', description: '', inverted: false, is_double: false, calculation_method: '' });
+                } else {
+                    fetchRelevantDepartmentStats();
+                }
+            }
+        }
+      } catch (err) {
+          console.error("Crash prevented in stat creation:", err);
       }
   };
 
-  const handleAssignExistingStat = async () => {
-      if (!selectedStatIdToAssign) return alert("Выберите статистику");
-      if (!supabase) return;
-
-      // Update the owner_id of the selected stat to this employee
-      const { error } = await supabase
-        .from('statistics_definitions')
-        .update({ owner_id: formData.id, type: 'employee' })
-        .eq('id', selectedStatIdToAssign);
-
-      if (error) {
-          alert("Ошибка назначения: " + error.message);
-      } else {
-          // Refresh list
-          fetchPersonalStats(formData.id);
-          setShowStatManager(false);
-          setSelectedStatIdToAssign('');
-      }
+  const handleDeleteStatRequest = (statId: string) => {
+      setConfirmModal({
+          isOpen: true,
+          title: 'Удаление статистики',
+          message: 'Вы уверены, что хотите удалить эту статистику и все её данные? Это действие необратимо.',
+          onConfirm: () => handleDeleteStat(statId)
+      });
   };
 
-  const handleUnassignStat = async (statId: string) => {
-      if (!confirm("Вы уверены? Статистика будет откреплена от сотрудника, но останется в базе данных.")) return;
+  const handleDeleteStat = async (statId: string) => {
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
       if (!supabase) return;
 
-      // Set owner_id to a generic 'unassigned' or just remove ownership logic depending on app rules.
-      // Here we set it to 'unassigned' to keep it safe.
-      const { error } = await supabase
-        .from('statistics_definitions')
-        .update({ owner_id: 'unassigned' })
-        .eq('id', statId);
+      // 1. Delete values
+      await supabase.from('statistics_values').delete().eq('definition_id', statId);
+      // 2. Delete definition
+      const { error } = await supabase.from('statistics_definitions').delete().eq('id', statId);
 
       if (error) {
-          alert("Ошибка: " + error.message);
+          console.error("Ошибка удаления: " + error.message);
       } else {
           setStatsDefinitions(prev => prev.filter(s => s.id !== statId));
       }
   };
 
-  // STRICT LINE SEGMENT LOGIC
+  const handleUpdateStat = async () => {
+      if (!editingStatId || !supabase) return;
+      
+      try {
+          const { error } = await supabase.from('statistics_definitions').update({
+              title: newStatData.title,
+              description: newStatData.description,
+              inverted: newStatData.inverted,
+              is_double: newStatData.is_double,
+              calculation_method: newStatData.calculation_method
+          }).eq('id', editingStatId);
+
+          if (error) {
+              console.error("Ошибка обновления: ", error);
+          } else {
+              setStatsDefinitions(prev => prev.map(s => s.id === editingStatId ? { ...s, ...newStatData } : s));
+              setEditingStatId(null);
+              setNewStatData({ title: '', description: '', inverted: false, is_double: false, calculation_method: '' });
+          }
+      } catch (err) {
+          console.error("Crash prevented in handleUpdateStat", err);
+      }
+  };
+
+  const startEditing = (stat: StatisticDefinition) => {
+      setEditingStatId(stat.id);
+      setNewStatData({
+          title: stat.title,
+          description: stat.description || '',
+          inverted: stat.inverted || false,
+          is_double: stat.is_double || false,
+          calculation_method: stat.calculation_method || ''
+      });
+  };
+
   const getFilteredValues = (statId: string) => {
       const vals = statsValues.filter(v => v.definition_id === statId);
       if (!vals.length) return [];
       
-      // Sort strictly by date asc
       const sorted = [...vals].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const total = sorted.length;
 
@@ -313,7 +369,6 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
           val2 = parseFloat(newValueInput2[statId]);
       }
 
-      // Use selected date (defaults to nearest Thursday)
       const date = newStatDate; 
 
       if (isDemoStats || !supabase) {
@@ -331,12 +386,13 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
       }
 
       const { data, error } = await supabase.from('statistics_values').insert([{ definition_id: statId, value: val, value2: val2, date: date }]).select();
-      if (!error && data) {
+      
+      if (!error && data && data.length > 0) {
           setStatsValues(prev => [...prev, data[0]]);
           setNewValueInput(prev => ({...prev, [statId]: ''}));
           if(isDouble) setNewValueInput2(prev => ({...prev, [statId]: ''}));
       } else {
-          alert("Ошибка сохранения");
+          console.error("Ошибка сохранения значения:", error);
       }
   };
 
@@ -388,71 +444,34 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
     if (!files || files.length === 0) return;
     
     setIsUploading(true);
-    
-    // Create local copies immediately for preview
     const file = files[0];
-    
-    // Read file as Base64 for immediate display
     const reader = new FileReader();
     reader.onload = async (ev) => {
         const base64 = ev.target?.result as string;
-        
-        if (isPhoto) {
-            setFormData(prev => ({ ...prev, photo_url: base64 }));
-        }
+        if (isPhoto) { setFormData(prev => ({ ...prev, photo_url: base64 })); }
 
         if (supabase) {
             const fileExt = file.name.split('.').pop();
             const fileName = `${formData.id}/${Date.now()}_.${fileExt}`; 
-            
             try {
                 const bucket = isPhoto ? 'employee-files' : 'employee-docs';
                 const fullPath = isPhoto ? `photos/${fileName}` : `documents/${fileName}`;
-
                 const { data, error } = await supabase.storage.from(bucket).upload(fullPath, file);
                 
                 if (data) {
                     const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
-                    
                     if (isPhoto) {
                         setFormData(prev => ({ ...prev, photo_url: urlData.publicUrl }));
                     } else {
-                        const newAttachment: Attachment = {
-                            id: crypto.randomUUID(), 
-                            employee_id: formData.id, 
-                            file_name: file.name, 
-                            file_type: file.type, 
-                            file_size: file.size, 
-                            storage_path: data.path,
-                            public_url: urlData.publicUrl, 
-                            uploaded_at: new Date().toISOString()
-                        };
+                        const newAttachment: Attachment = { id: crypto.randomUUID(), employee_id: formData.id, file_name: file.name, file_type: file.type, file_size: file.size, storage_path: data.path, public_url: urlData.publicUrl, uploaded_at: new Date().toISOString() };
                         setFormData(prev => ({ ...prev, attachments: [...prev.attachments, newAttachment] }));
                     }
                 }
-            } catch (err) {
-                console.error("Critical upload exception", err);
-            }
-        } else {
-            if (!isPhoto) {
-                 const newAttachment: Attachment = {
-                    id: crypto.randomUUID(), 
-                    employee_id: formData.id, 
-                    file_name: file.name, 
-                    file_type: file.type, 
-                    file_size: file.size, 
-                    storage_path: '',
-                    public_url: base64, 
-                    uploaded_at: new Date().toISOString()
-                };
-                setFormData(prev => ({ ...prev, attachments: [...prev.attachments, newAttachment] }));
-            }
+            } catch (err) { console.error("Upload error", err); }
         }
-        
         setIsUploading(false);
     };
     reader.readAsDataURL(file);
-
     if (fileInputRef.current) fileInputRef.current.value = ''; 
     if (docInputRef.current) docInputRef.current.value = '';
   };
@@ -461,19 +480,8 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if(isUploading) return;
     onSave({ ...formData, updated_at: new Date().toISOString() });
-  };
-
-  // Get recommended templates based on subdepartment
-  const getRecommendedStats = () => {
-      const subDepts = formData.subdepartment || [];
-      const recommended: {title: string}[] = [];
-      subDepts.forEach(sub => {
-          if (ROLE_STAT_TEMPLATES[sub]) {
-              recommended.push(...ROLE_STAT_TEMPLATES[sub]);
-          }
-      });
-      return recommended;
   };
 
   if (!isOpen) return null;
@@ -496,7 +504,16 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
           </div>
           <div className="flex items-center gap-2">
               <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">{isReadOnly ? 'Закрыть' : 'Отмена'}</button>
-              {!isReadOnly && <button onClick={handleSubmit} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 flex items-center gap-2 transition-all hover:-translate-y-0.5"><Save size={18} /> Сохранить</button>}
+              {!isReadOnly && (
+                  <button 
+                    onClick={handleSubmit} 
+                    disabled={isUploading}
+                    className={`px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 flex items-center gap-2 transition-all ${isUploading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700 hover:-translate-y-0.5'}`}
+                  >
+                    {isUploading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18} />} 
+                    Сохранить
+                  </button>
+              )}
           </div>
         </div>
 
@@ -510,7 +527,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
                     { id: 'docs', label: '3. Документы (Паспорта)', restricted: true },
                     { id: 'finance', label: '4. Финансы & Крипта', restricted: true },
                     { id: 'files', label: '5. Файлы & Договоры', restricted: true },
-                    { id: 'stats', label: '6. Личная Статистика', icon: <TrendingUp size={14}/>, restricted: true }
+                    { id: 'stats', label: '6. Личная Статистика', icon: <TrendingUp size={14}/>, restricted: false } // CHANGED: restricted: false to allow viewing
                 ].map(tab => {
                     if (isReadOnly && tab.restricted) return null;
                     return (
@@ -531,7 +548,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 <form className="max-w-4xl mx-auto space-y-8 pb-20">
                     
-                    {/* TAB: GENERAL */}
+                    {/* ... (Previous Tabs Content omitted for brevity, logic remains same) ... */}
                     {activeTab === 'general' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
                             <section>
@@ -540,25 +557,11 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
                                     <div className="md:col-span-2 flex justify-center mb-4">
                                         <div className="w-32 h-32 rounded-full border-4 border-slate-100 shadow-lg overflow-hidden bg-slate-200 relative group">
                                             {formData.photo_url ? (
-                                                <img 
-                                                    src={formData.photo_url} 
-                                                    alt="Avatar" 
-                                                    className="w-full h-full object-cover" 
-                                                    onError={(e) => {
-                                                        if (e.currentTarget.src.startsWith('https://ui-avatars.com')) return;
-                                                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${formData.full_name}&background=f1f5f9&color=64748b`;
-                                                    }}
-                                                />
+                                                <img src={formData.photo_url} alt="Avatar" className="w-full h-full object-cover" onError={(e) => { if (e.currentTarget.src.startsWith('https://ui-avatars.com')) return; e.currentTarget.src = `https://ui-avatars.com/api/?name=${formData.full_name}&background=f1f5f9&color=64748b`; }}/>
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-100"><User size={40}/></div>
                                             )}
-                                            <button 
-                                                type="button" 
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                            >
-                                                <Upload size={24} />
-                                            </button>
+                                            <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"><Upload size={24} /></button>
                                             <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e, true)} className="hidden" accept="image/*" />
                                         </div>
                                     </div>
@@ -615,7 +618,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
                         </div>
                     )}
                     
-                    {/* OTHER TABS (Code omitted for brevity as they are unchanged) */}
+                    {/* ... (Contacts, Docs, Finance, Files Tabs - same as before) ... */}
                     {activeTab === 'contacts' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                             <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2"><div className="w-1.5 h-6 bg-purple-500 rounded-full"></div> Контакты & Адреса</h3>
@@ -671,189 +674,265 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
                         </div>
                     )}
 
-                    {/* TAB: STATS (ADMIN ONLY) */}
-                    {activeTab === 'stats' && !isReadOnly && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 relative">
-                            <div className="flex justify-between items-center mb-2">
-                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><div className="w-1.5 h-6 bg-emerald-500 rounded-full"></div> Личная Статистика и KPI</h3>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
-                                        {PERIODS.map(p => (
-                                            <button key={p.id} type="button" onClick={() => setStatsPeriod(p.id)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${statsPeriod === p.id ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>{p.label}</button>
-                                        ))}
-                                    </div>
-                                    <button 
-                                        type="button" 
-                                        onClick={() => { setShowStatManager(!showStatManager); if(!showStatManager) fetchAllAvailableStats(); }} 
-                                        className={`p-2 rounded-xl transition-all border ${showStatManager ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50'}`} 
-                                        title="Управление статистиками"
-                                    >
-                                        <Plus size={20}/>
-                                    </button>
+                    {/* TAB: STATS (VISIBLE TO ALL, EDITABLE BY ADMIN) */}
+                    {activeTab === 'stats' && (
+                        isNewEmployee ? (
+                            <div className="flex flex-col items-center justify-center h-64 text-center p-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 animate-in fade-in">
+                                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                                    <Save size={32} />
                                 </div>
+                                <h3 className="text-xl font-bold text-slate-800 mb-2">Сохраните сотрудника</h3>
+                                <p className="text-slate-500 max-w-sm mx-auto mb-6 text-sm">
+                                    Для управления статистикой и KPI необходимо сначала создать карточку сотрудника в базе данных.
+                                </p>
+                                <button onClick={handleSubmit} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center gap-2">
+                                    <Save size={18} />
+                                    Сохранить и продолжить
+                                </button>
                             </div>
-                            
-                            {/* STATS MANAGER (Add/Assign) */}
-                            {showStatManager && (
-                                <div className="bg-white p-6 rounded-3xl border-2 border-blue-100 shadow-lg mb-6 animate-in slide-in-from-top-4 relative z-10">
-                                    
-                                    {/* Sub-Section: Recommended from Templates */}
-                                    {getRecommendedStats().length > 0 && (
-                                        <div className="mb-6 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                            <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                                <Sparkles size={14}/> Рекомендуемые KPI для должности
-                                            </h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {getRecommendedStats().map((tpl, idx) => {
-                                                    // Check if already assigned
-                                                    const exists = statsDefinitions.some(s => s.title === tpl.title);
-                                                    if (exists) return null;
-                                                    return (
-                                                        <button 
-                                                            key={idx}
-                                                            type="button"
-                                                            onClick={() => handleCreatePersonalStat(tpl.title)}
-                                                            className="flex items-center gap-2 px-3 py-2 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-100 hover:border-emerald-300 transition-all"
-                                                        >
-                                                            <Plus size={12}/> {tpl.title}
-                                                        </button>
-                                                    );
-                                                })}
-                                                {getRecommendedStats().every(tpl => statsDefinitions.some(s => s.title === tpl.title)) && (
-                                                    <span className="text-xs text-emerald-600 italic">Все рекомендуемые статистики уже добавлены.</span>
-                                                )}
-                                            </div>
+                        ) : (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 relative">
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><div className="w-1.5 h-6 bg-emerald-500 rounded-full"></div> Личная Статистика и KPI</h3>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
+                                            {PERIODS.map(p => (
+                                                <button key={p.id} type="button" onClick={() => setStatsPeriod(p.id)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${statsPeriod === p.id ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>{p.label}</button>
+                                            ))}
                                         </div>
-                                    )}
-
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h4 className="font-bold text-slate-800">Добавить / Назначить Статистику</h4>
-                                        <div className="flex bg-slate-100 p-1 rounded-lg">
-                                            <button type="button" onClick={() => setStatManagerMode('create')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${statManagerMode === 'create' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>Создать новую</button>
-                                            <button type="button" onClick={() => setStatManagerMode('assign')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${statManagerMode === 'assign' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>Выбрать из базы</button>
-                                        </div>
+                                        {!isReadOnly && (
+                                            <button 
+                                                type="button" 
+                                                onClick={() => { setShowStatManager(!showStatManager); }} 
+                                                className={`p-2 rounded-xl transition-all border ${showStatManager ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50'}`} 
+                                                title="Управление статистиками"
+                                            >
+                                                <Plus size={20}/>
+                                            </button>
+                                        )}
                                     </div>
-
-                                    {statManagerMode === 'create' && (
-                                        <div className="space-y-3">
-                                            <input 
-                                                type="text"
-                                                value={newStatData.title} 
-                                                onChange={e => setNewStatData({...newStatData, title: e.target.value})} 
-                                                placeholder="Название статистики (например: Личные Продажи)" 
-                                                className="w-full px-4 py-3 border border-slate-300 bg-white text-slate-900 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                                            />
-                                            <input 
-                                                type="text"
-                                                value={newStatData.description} 
-                                                onChange={e => setNewStatData({...newStatData, description: e.target.value})} 
-                                                placeholder="Описание (что измеряем)" 
-                                                className="w-full px-4 py-3 border border-slate-300 bg-white text-slate-900 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none" 
-                                            />
-                                            <div className="flex gap-4">
-                                                <label className="flex items-center gap-2 text-sm text-slate-600 font-medium cursor-pointer bg-slate-50 px-3 py-2 rounded-lg border border-slate-200"><input type="checkbox" checked={newStatData.inverted} onChange={e => setNewStatData({...newStatData, inverted: e.target.checked})} className="rounded text-blue-600"/> Обратная</label>
-                                                <label className="flex items-center gap-2 text-sm text-slate-600 font-medium cursor-pointer bg-slate-50 px-3 py-2 rounded-lg border border-slate-200"><input type="checkbox" checked={newStatData.is_double} onChange={e => setNewStatData({...newStatData, is_double: e.target.checked})} className="rounded text-blue-600"/> Двойная</label>
+                                </div>
+                                
+                                {/* STATS MANAGER (Add/Assign) - Only visible if !isReadOnly */}
+                                {showStatManager && !isReadOnly && (
+                                    <div className="bg-white p-6 rounded-3xl border-2 border-blue-100 shadow-lg mb-6 animate-in slide-in-from-top-4 relative z-10">
+                                        <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                                            <h4 className="font-bold text-slate-800">Добавить Статистику</h4>
+                                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                                <button type="button" onClick={() => setStatManagerMode('assign')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${statManagerMode === 'assign' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>Выбрать из базы</button>
+                                                <button type="button" onClick={() => setStatManagerMode('create')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${statManagerMode === 'create' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>Создать с нуля</button>
                                             </div>
-                                            <button type="button" onClick={() => handleCreatePersonalStat()} className="w-full py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">Создать и Назначить</button>
                                         </div>
-                                    )}
 
-                                    {statManagerMode === 'assign' && (
-                                        <div className="space-y-3">
-                                            <p className="text-xs text-slate-500 mb-2">Выберите статистику из базы, чтобы назначить этого сотрудника ответственным.</p>
-                                            {availableStatsToAssign.length === 0 ? (
-                                                <div className="p-4 text-center bg-slate-50 rounded-xl text-slate-400 text-sm italic">Нет доступных статистик для переназначения</div>
-                                            ) : (
-                                                <select 
-                                                    value={selectedStatIdToAssign} 
-                                                    onChange={e => setSelectedStatIdToAssign(e.target.value)} 
-                                                    className="w-full px-4 py-3 border border-slate-300 bg-white text-slate-900 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    <option value="">-- Выберите статистику --</option>
-                                                    {availableStatsToAssign.map(s => {
-                                                        const currentOwner = ORGANIZATION_STRUCTURE[s.owner_id || '']?.name || s.owner_id || 'Не назначен';
-                                                        return <option key={s.id} value={s.id}>{s.title} (Владелец: {currentOwner})</option>;
-                                                    })}
-                                                </select>
-                                            )}
-                                            <button type="button" onClick={handleAssignExistingStat} disabled={availableStatsToAssign.length === 0} className="w-full py-2 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><Link2 size={16}/> Назначить сотруднику</button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {isDemoStats && (<div className="bg-amber-50 border border-amber-200 p-4 rounded-xl mb-4 text-xs text-amber-800 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>Показаны демонстрационные данные. Реальные статистики отсутствуют.</div>)}
-                            
-                            {statsDefinitions.length === 0 && !isDemoStats && (
-                                <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
-                                    <TrendingUp className="mx-auto text-slate-300 mb-2" size={32}/>
-                                    <p className="text-slate-500 font-medium text-sm">Нет назначенных статистик</p>
-                                    <button type="button" onClick={() => setShowStatManager(true)} className="mt-2 text-blue-600 font-bold text-xs hover:underline">Добавить статистику</button>
-                                </div>
-                            )}
-
-                            {statsDefinitions.map(stat => {
-                                if (!stat) return null; // Safety check
-                                const vals = getFilteredValues(stat.id);
-                                const { slope, change, current } = analyzeTrend(vals, stat.inverted);
-                                const isSlopeUp = slope > 0;
-                                let isPositiveOutcome = isSlopeUp;
-                                if(stat.inverted) isPositiveOutcome = !isSlopeUp;
-
-                                const trendColorHex = isPositiveOutcome ? "#10b981" : "#f43f5e";
-                                return (
-                                    <div key={stat.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow relative group">
-                                        <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white">
-                                            <div className="flex-1 pr-4">
-                                                <div className="flex items-start gap-2 mb-1">
-                                                    <h4 className="font-bold text-lg text-slate-800 leading-tight">{stat.title}</h4>
-                                                    <button type="button" onClick={() => setInfoStatId(infoStatId === stat.id ? null : stat.id)} className="text-slate-300 hover:text-blue-600 transition-colors mt-0.5"><Info size={16} /></button>
+                                        {/* MODE: CREATE FRESH */}
+                                        {statManagerMode === 'create' && (
+                                            <div className="space-y-3">
+                                                <input 
+                                                    type="text"
+                                                    value={newStatData.title} 
+                                                    onChange={e => setNewStatData({...newStatData, title: e.target.value})} 
+                                                    placeholder="Название (например: Личные продажи)" 
+                                                    className="w-full px-4 py-3 border border-slate-300 bg-white text-slate-900 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
+                                                />
+                                                <input 
+                                                    type="text"
+                                                    value={newStatData.description} 
+                                                    onChange={e => setNewStatData({...newStatData, description: e.target.value})} 
+                                                    placeholder="Описание (что измеряем)" 
+                                                    className="w-full px-4 py-3 border border-slate-300 bg-white text-slate-900 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none" 
+                                                />
+                                                <div className="flex gap-4">
+                                                    <label className="flex items-center gap-2 text-sm text-slate-600 font-medium cursor-pointer bg-slate-50 px-3 py-2 rounded-lg border border-slate-200"><input type="checkbox" checked={newStatData.inverted} onChange={e => setNewStatData({...newStatData, inverted: e.target.checked})} className="rounded text-blue-600"/> Обратная</label>
+                                                    <label className="flex items-center gap-2 text-sm text-slate-600 font-medium cursor-pointer bg-slate-50 px-3 py-2 rounded-lg border border-slate-200"><input type="checkbox" checked={newStatData.is_double} onChange={e => setNewStatData({...newStatData, is_double: e.target.checked})} className="rounded text-blue-600"/> Двойная</label>
                                                 </div>
-                                                {stat.inverted && (<div className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider mb-1.5"><ArrowDownUp size={10} /> ОБРАТНАЯ</div>)}
-                                                <p className="text-xs text-slate-500 font-medium line-clamp-2">{stat.description || 'Личный показатель эффективности'}</p>
+                                                <button type="button" onClick={() => handleCreatePersonalStat()} className="w-full py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">Создать Личную Статистику</button>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="text-4xl font-black text-slate-900 tracking-tight">{current.toLocaleString()}</div>
-                                                {vals.length > 1 && (
-                                                    <div className={`text-xs font-bold flex items-center justify-end gap-1 mt-1 px-2 py-0.5 rounded-lg ${isPositiveOutcome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                        {slope >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
-                                                        {Math.abs(change * 100).toFixed(1)}%
+                                        )}
+
+                                        {/* MODE: ASSIGN FROM DEPT (CLONE) */}
+                                        {statManagerMode === 'assign' && (
+                                            <div className="space-y-4">
+                                                <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-800 border border-blue-100 flex items-start gap-2">
+                                                    <Info size={16} className="flex-shrink-0 mt-0.5"/>
+                                                    <span>
+                                                        Выберите статистику подразделения. Будет создана <strong>личная копия</strong> для сотрудника, показатели которой в будущем будут суммироваться в общую статистику отдела.
+                                                    </span>
+                                                </div>
+
+                                                {departmentStats.length === 0 ? (
+                                                    <div className="p-6 text-center border-2 border-dashed border-slate-200 rounded-xl">
+                                                        <p className="text-slate-400 text-sm italic mb-2">Нет доступных статистик для выбранных департаментов.</p>
+                                                        <p className="text-slate-400 text-xs">Убедитесь, что сотрудник добавлен в отдел, и у отдела есть созданные статистики.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                                                        {departmentStats.map((group, idx) => (
+                                                            <div key={idx}>
+                                                                <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                                    <Layers size={12}/> {group.deptName}
+                                                                </h5>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                    {group.stats.map(stat => (
+                                                                        <button 
+                                                                            key={stat.id}
+                                                                            type="button"
+                                                                            onClick={() => handleCreatePersonalStat(stat)}
+                                                                            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-white hover:shadow-md border border-slate-200 rounded-xl text-left transition-all group"
+                                                                        >
+                                                                            <div>
+                                                                                <div className="font-bold text-slate-700 text-sm">{stat.title}</div>
+                                                                                <div className="text-[10px] text-slate-400 line-clamp-1">{stat.description || 'Нет описания'}</div>
+                                                                            </div>
+                                                                            <div className="bg-white p-1.5 rounded-lg text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                                                                                <Plus size={14}/>
+                                                                            </div>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>
-                                            {/* Unassign Button (Hidden by default, shown on hover) */}
-                                            <button 
-                                                type="button" 
-                                                onClick={() => handleUnassignStat(stat.id)}
-                                                className="absolute top-2 right-2 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                                title="Открепить статистику"
-                                            >
-                                                <Unlink size={14}/>
-                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Editing Modal (Inline) - Only visible if !isReadOnly */}
+                                {editingStatId && !isReadOnly && (
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-blue-200 mb-4 animate-in fade-in">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="font-bold text-blue-800 text-sm">Редактирование статистики</h4>
+                                            <button onClick={() => setEditingStatId(null)}><X size={16} className="text-slate-400 hover:text-slate-600"/></button>
                                         </div>
-                                        <div className="px-6 pb-2 pt-4 h-64 bg-white relative">
-                                            <StatsChart key={statsPeriod} values={vals} inverted={stat.inverted} color={trendColorHex} isDouble={stat.is_double} />
-                                        </div>
-                                        <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-                                            <div className="flex items-center gap-2 flex-1">
-                                                <input type="date" value={newStatDate} onChange={e => setNewStatDate(e.target.value)} className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-medium bg-white text-slate-700" />
-                                                <input type="number" placeholder="0" value={newValueInput[stat.id] || ''} onChange={e => setNewValueInput({...newValueInput, [stat.id]: e.target.value})} className="w-20 px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold outline-none" />
-                                                {stat.is_double && (
-                                                    <input type="number" placeholder="Вал 2" value={newValueInput2[stat.id] || ''} onChange={e => setNewValueInput2({...newValueInput2, [stat.id]: e.target.value})} className="w-20 px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold outline-none" />
-                                                )}
-                                                <button type="button" onClick={() => handleAddValue(stat.id, stat.is_double || false)} className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-xs font-bold flex items-center gap-1"><Plus size={14}/> Внести</button>
+                                        <div className="space-y-3">
+                                            <input value={newStatData.title} onChange={e => setNewStatData({...newStatData, title: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold" placeholder="Название" />
+                                            <input value={newStatData.description} onChange={e => setNewStatData({...newStatData, description: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Описание" />
+                                            <div className="flex gap-4">
+                                                <label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={newStatData.inverted} onChange={e => setNewStatData({...newStatData, inverted: e.target.checked})}/> Обратная</label>
+                                                <label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={newStatData.is_double} onChange={e => setNewStatData({...newStatData, is_double: e.target.checked})}/> Двойная</label>
                                             </div>
-                                            <div className="text-[10px] text-slate-400 font-medium">Посл: {vals.length > 0 ? format(new Date(vals[vals.length-1].date), 'dd.MM') : '-'}</div>
+                                            <button onClick={handleUpdateStat} className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">Сохранить изменения</button>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                )}
+
+                                {statsDefinitions.length === 0 && !isDemoStats && (
+                                    <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
+                                        <TrendingUp className="mx-auto text-slate-300 mb-2" size={32}/>
+                                        <p className="text-slate-500 font-medium text-sm">Нет назначенных статистик</p>
+                                        {!isReadOnly && <button type="button" onClick={() => setShowStatManager(true)} className="mt-2 text-blue-600 font-bold text-xs hover:underline">Добавить статистику</button>}
+                                    </div>
+                                )}
+
+                                {statsDefinitions.map(stat => {
+                                    if (!stat) return null;
+                                    const vals = getFilteredValues(stat.id);
+                                    const { slope, change, current } = analyzeTrend(vals, stat.inverted);
+                                    const isSlopeUp = slope > 0;
+                                    let isPositiveOutcome = isSlopeUp;
+                                    if(stat.inverted) isPositiveOutcome = !isSlopeUp;
+
+                                    const trendColorHex = isPositiveOutcome ? "#10b981" : "#f43f5e";
+                                    return (
+                                        <div key={stat.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow relative group">
+                                            <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white">
+                                                {/* ... Header content ... */}
+                                                <div className="flex-1 pr-4">
+                                                    <div className="flex items-start gap-2 mb-1">
+                                                        <h4 className="font-bold text-lg text-slate-800 leading-tight">{stat.title}</h4>
+                                                        <button type="button" onClick={() => setInfoStatId(infoStatId === stat.id ? null : stat.id)} className="text-slate-300 hover:text-blue-600 transition-colors mt-0.5"><Info size={16} /></button>
+                                                    </div>
+                                                    {stat.inverted && (<div className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider mb-1.5"><ArrowDownUp size={10} /> ОБРАТНАЯ</div>)}
+                                                    <p className="text-xs text-slate-500 font-medium line-clamp-2">{stat.description || 'Личный показатель эффективности'}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-4xl font-black text-slate-900 tracking-tight">{current.toLocaleString()}</div>
+                                                    {vals.length > 1 && (
+                                                        <div className={`text-xs font-bold flex items-center justify-end gap-1 mt-1 px-2 py-0.5 rounded-lg ${isPositiveOutcome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                            {slope >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
+                                                            {Math.abs(change * 100).toFixed(1)}%
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Edit / Delete Controls - Only if !isReadOnly */}
+                                                {!isReadOnly && (
+                                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-20">
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => startEditing(stat)}
+                                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                                            title="Редактировать"
+                                                        >
+                                                            <Edit2 size={14}/>
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => handleDeleteStatRequest(stat.id)}
+                                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                                            title="Удалить статистику и данные"
+                                                        >
+                                                            <Trash2 size={14}/>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="px-6 pb-2 pt-4 h-64 bg-white relative z-0">
+                                                <StatsChart key={statsPeriod} values={vals} inverted={stat.inverted} color={trendColorHex} isDouble={stat.is_double} />
+                                            </div>
+                                            
+                                            {/* Footer - Only if !isReadOnly */}
+                                            {!isReadOnly && (
+                                                <div className="p-3 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Ввод данных</div>
+                                                        <div className="text-[10px] text-slate-400 font-medium">Посл: {vals.length > 0 ? format(new Date(vals[vals.length-1].date), 'dd.MM') : '-'}</div>
+                                                    </div>
+                                                    
+                                                    <div className="flex flex-wrap items-end gap-2 w-full">
+                                                        <div className="relative flex-shrink-0">
+                                                            <label className="block text-[8px] font-bold text-slate-400 mb-1 uppercase">Дата (Чт)</label>
+                                                            <input type="date" value={newStatDate} onChange={e => setNewStatDate(e.target.value)} className="h-9 px-2 border border-slate-200 rounded-lg text-xs font-medium bg-white text-slate-700 focus:border-blue-300 outline-none w-28" />
+                                                        </div>
+                                                        
+                                                        <div className="flex-1 min-w-[100px]">
+                                                             <label className="block text-[8px] font-bold text-slate-400 mb-1 uppercase">Значение</label>
+                                                             <input type="number" placeholder="0" value={newValueInput[stat.id] || ''} onChange={e => setNewValueInput({...newValueInput, [stat.id]: e.target.value})} className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-blue-300 placeholder:font-normal" />
+                                                        </div>
+
+                                                        {stat.is_double && (
+                                                            <div className="flex-1 min-w-[100px]">
+                                                                <label className="block text-[8px] font-bold text-slate-400 mb-1 uppercase">Вал 2</label>
+                                                                <input type="number" placeholder="0" value={newValueInput2[stat.id] || ''} onChange={e => setNewValueInput2({...newValueInput2, [stat.id]: e.target.value})} className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-blue-300 placeholder:font-normal" />
+                                                            </div>
+                                                        )}
+
+                                                        <button type="button" onClick={() => handleAddValue(stat.id, stat.is_double || false)} className="h-9 px-4 bg-white border border-slate-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all shadow-sm ml-auto"><Plus size={16}/> <span className="hidden sm:inline">Добавить</span></button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )
                     )}
                 </form>
             </div>
         </div>
       </div>
+      
+      {/* Confirmation Modal at highest level */}
+      <ConfirmationModal 
+            isOpen={confirmModal.isOpen}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            onConfirm={confirmModal.onConfirm}
+            onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            isDanger={true}
+            confirmLabel="Удалить"
+      />
     </div>
   );
 };
