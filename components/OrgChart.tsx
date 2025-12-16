@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { ORGANIZATION_STRUCTURE } from '../constants';
 import { Employee } from '../types';
-import { User, X, Search, FileText, Printer, ChevronRight, Users, Crown, Target, Award, ChevronDown, ArrowDown, Copy, Check, MessageCircle, Phone, Hash, AlertTriangle, Zap } from 'lucide-react';
+import { User, X, Search, FileText, ChevronRight, Users, Crown, Target, Award, Copy, Check, MessageCircle, Phone, Hash, AlertTriangle, Zap } from 'lucide-react';
 
 interface OrgChartProps {
   employees: Employee[];
@@ -18,9 +18,20 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // State for collapsible cards
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+
+  // Auto-center scroll on mount
+  useLayoutEffect(() => {
+    if (scrollContainerRef.current) {
+      const { scrollWidth, clientWidth } = scrollContainerRef.current;
+      if (scrollWidth > clientWidth) {
+        scrollContainerRef.current.scrollLeft = (scrollWidth - clientWidth) / 2;
+      }
+    }
+  }, []);
 
   const toggleCard = (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
@@ -103,8 +114,9 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
     <div className="h-full flex flex-col relative bg-slate-50/50 overflow-hidden">
         
         {/* UNIFIED SCROLLABLE AREA (X and Y) */}
-        <div className="flex-1 overflow-auto custom-scrollbar p-4 md:p-8">
-            <div className="min-w-max mx-auto flex flex-col items-center"> 
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto custom-scrollbar p-4 md:p-8">
+            {/* Added w-full to wrapper for mobile, md:min-w-max for desktop to ensure proper centering logic */}
+            <div className="w-full md:min-w-max mx-auto flex flex-col items-center"> 
                 
                 {/* 2. HIERARCHY TOP (FOUNDER -> DIRECTOR) - COMPACT */}
                 <div className="flex flex-col items-center mb-6 relative z-10">
