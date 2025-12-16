@@ -398,7 +398,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
           <div 
             key={`${contextKey}-${stat.id}`} 
             onClick={() => !isEditMode && setExpandedStatId(stat.id)}
-            className={`relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[260px] transition-all group ${isEditMode ? 'ring-2 ring-blue-400 ring-offset-2 hover:-translate-y-0' : 'cursor-pointer hover:-translate-y-1 hover:shadow-md'}`}
+            className={`relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[200px] md:h-[260px] transition-all group ${isEditMode ? 'ring-2 ring-blue-400 ring-offset-2 hover:-translate-y-0' : 'cursor-pointer hover:-translate-y-1 hover:shadow-md'}`}
           >
               <div className="absolute top-0 left-0 bottom-0 w-1" style={{backgroundColor: deptColor}}></div>
               <div className="absolute top-0 left-1 right-0 h-32 pointer-events-none" style={{ background: `linear-gradient(to bottom, ${deptColor}15, #ffffff00)` }}></div>
@@ -410,18 +410,18 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                   </div>
               )}
 
-              <div className="p-3 pl-4 flex flex-col h-full relative z-10">
-                  <div className="flex justify-between items-start mb-2">
+              <div className="p-2.5 md:p-3 md:pl-4 flex flex-col h-full relative z-10">
+                  <div className="flex justify-between items-start mb-1 md:mb-2">
                       <div className="flex-1 pr-6">
                            <div className="flex items-center gap-1.5">
-                                <h3 className="text-xs font-bold text-slate-800 leading-snug line-clamp-2" title={stat.title}>{stat.title}</h3>
+                                <h3 className="text-[10px] md:text-xs font-bold text-slate-800 leading-snug line-clamp-2" title={stat.title}>{stat.title}</h3>
                                 {stat.inverted && (
-                                    <span className="text-[8px] bg-purple-100 text-purple-700 px-1 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5 flex-shrink-0">
-                                        <ArrowDownUp size={8}/> ОБР
+                                    <span className="text-[7px] md:text-[8px] bg-purple-100 text-purple-700 px-1 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5 flex-shrink-0">
+                                        <ArrowDownUp size={8}/> <span className="hidden md:inline">ОБР</span>
                                     </span>
                                 )}
                            </div>
-                           <div className="text-[9px] text-slate-400 font-medium truncate mt-0.5 line-clamp-1" title={stat.description}>{stat.description || getOwnerName(stat.owner_id || '')}</div>
+                           <div className="text-[8px] md:text-[9px] text-slate-400 font-medium truncate mt-0.5 line-clamp-1" title={stat.description}>{stat.description || getOwnerName(stat.owner_id || '')}</div>
                       </div>
                       {!isEditMode && (
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3 text-slate-300">
@@ -431,13 +431,13 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                   </div>
                   
                   {/* MAIN VALUE & TREND */}
-                  <div className="flex items-baseline gap-2 mb-2">
-                      <span className="text-2xl font-black text-slate-900 tracking-tight">{current.toLocaleString()}</span>
+                  <div className="flex items-baseline gap-2 mb-1 md:mb-2">
+                      <span className="text-lg md:text-2xl font-black text-slate-900 tracking-tight">{current.toLocaleString()}</span>
                       {vals.length > 1 && (
-                          <div className={`flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded ${isGood ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                              {direction === 'up' && <TrendingUp size={12} className="mr-1"/>}
-                              {direction === 'down' && <TrendingDown size={12} className="mr-1"/>}
-                              {direction === 'flat' && <Minus size={12} className="mr-1"/>}
+                          <div className={`flex items-center text-[9px] md:text-[10px] font-bold px-1 py-0.5 md:px-1.5 rounded ${isGood ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                              {direction === 'up' && <TrendingUp size={10} className="mr-1 md:w-3 md:h-3"/>}
+                              {direction === 'down' && <TrendingDown size={10} className="mr-1 md:w-3 md:h-3"/>}
+                              {direction === 'flat' && <Minus size={10} className="mr-1 md:w-3 md:h-3"/>}
                               {Math.abs(percent).toFixed(0)}%
                           </div>
                       )}
@@ -447,8 +447,8 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                        <StatsChart key={selectedPeriod} values={vals} color={trendColorHex} inverted={stat.inverted} isDouble={stat.is_double} />
                   </div>
                   <div className="absolute bottom-2 right-2 flex gap-1 pointer-events-none opacity-50">
-                       {stat.is_favorite && <span className="text-[8px] bg-amber-100 text-amber-700 px-1 rounded font-bold">ГСД</span>}
-                       {stat.is_double && <span className="text-[8px] bg-indigo-100 text-indigo-700 px-1 rounded font-bold">2X</span>}
+                       {stat.is_favorite && <span className="text-[7px] md:text-[8px] bg-amber-100 text-amber-700 px-1 rounded font-bold">ГСД</span>}
+                       {stat.is_double && <span className="text-[7px] md:text-[8px] bg-indigo-100 text-indigo-700 px-1 rounded font-bold">2X</span>}
                   </div>
               </div>
           </div>
@@ -456,7 +456,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
   };
 
   const renderDashboardView = () => (
-      <div className="space-y-10 animate-in fade-in">
+      <div className="space-y-6 md:space-y-10 animate-in fade-in">
           {DEPT_ORDER.filter(id => !selectedDeptId || id === selectedDeptId).map(deptId => {
               const dept = ORGANIZATION_STRUCTURE[deptId];
               if (!dept) return null;
@@ -470,14 +470,14 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                   
                   return (
                       <div key={deptId} className="space-y-3">
-                           <div className="bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-200 flex items-center justify-between border-l-4" style={{borderLeftColor: dept.color}}>
-                               <h2 className="text-sm font-bold flex items-center gap-2 text-slate-700">{dept.name}</h2>
-                               <span className="text-slate-400 text-xs font-medium">{dept.manager}</span>
+                           <div className="bg-white px-2 py-1.5 md:px-3 md:py-2 rounded-lg shadow-sm border border-slate-200 flex items-center justify-between border-l-4" style={{borderLeftColor: dept.color}}>
+                               <h2 className="text-xs md:text-sm font-bold flex items-center gap-2 text-slate-700">{dept.name}</h2>
+                               <span className="text-slate-400 text-[10px] md:text-xs font-medium">{dept.manager}</span>
                            </div>
-                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
                                {mainStats.map(stat => renderStatCard(stat, dept.color, 'overview'))}
                                {isEditMode && isAdmin && (
-                                   <div onClick={() => openNewStatModal(deptId)} className="border-2 border-dashed border-slate-300 rounded-xl h-[260px] flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all">
+                                   <div onClick={() => openNewStatModal(deptId)} className="border-2 border-dashed border-slate-300 rounded-xl h-[200px] md:h-[260px] flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all">
                                        <Plus size={32} />
                                        <span className="text-xs font-bold mt-2">Добавить статистику</span>
                                    </div>
@@ -494,19 +494,19 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                       <div key={deptId} className="space-y-6">
                            <div className="bg-white px-4 py-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between border-l-4" style={{borderLeftColor: dept.color}}>
                                <div>
-                                  <h2 className="text-lg font-bold text-slate-800">{dept.name}</h2>
-                                  <p className="text-xs text-slate-500">{dept.manager}</p>
+                                  <h2 className="text-sm md:text-lg font-bold text-slate-800">{dept.name}</h2>
+                                  <p className="text-[10px] md:text-xs text-slate-500">{dept.manager}</p>
                                </div>
-                               <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">
+                               <span className="text-[10px] md:text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">
                                    {mainStats.length + subDeptStatsCount} статистик
                                </span>
                            </div>
 
                            {/* Main Dept Stats */}
-                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
                                {mainStats.map(stat => renderStatCard(stat, dept.color, `main-${deptId}`))}
                                {isEditMode && isAdmin && (
-                                   <div onClick={() => openNewStatModal(deptId)} className="border-2 border-dashed border-slate-300 rounded-xl h-[260px] flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all">
+                                   <div onClick={() => openNewStatModal(deptId)} className="border-2 border-dashed border-slate-300 rounded-xl h-[200px] md:h-[260px] flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all">
                                        <Plus size={32} />
                                        <span className="text-xs font-bold mt-2">Добавить статистику</span>
                                    </div>
@@ -519,12 +519,12 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                                if(specificSubStats.length === 0 && !isEditMode) return null;
                                
                                return (
-                                   <div key={sub.id} className="mt-8 pt-4 border-t border-slate-100">
-                                       <h3 className="text-sm font-bold text-slate-600 mb-4 flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{backgroundColor: dept.color}}></div> {sub.name}</h3>
-                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                   <div key={sub.id} className="mt-6 md:mt-8 pt-4 border-t border-slate-100">
+                                       <h3 className="text-xs md:text-sm font-bold text-slate-600 mb-3 md:mb-4 flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{backgroundColor: dept.color}}></div> {sub.name}</h3>
+                                       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
                                            {specificSubStats.map(stat => renderStatCard(stat, dept.color, `sub-${sub.id}`))}
                                            {isEditMode && isAdmin && (
-                                               <div onClick={() => openNewStatModal(sub.id)} className="border-2 border-dashed border-slate-300 rounded-xl h-[260px] flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all">
+                                               <div onClick={() => openNewStatModal(sub.id)} className="border-2 border-dashed border-slate-300 rounded-xl h-[200px] md:h-[260px] flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all">
                                                    <Plus size={32} />
                                                    <span className="text-xs font-bold mt-2">Добавить в {sub.code}</span>
                                                </div>

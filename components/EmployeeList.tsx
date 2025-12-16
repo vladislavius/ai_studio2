@@ -291,12 +291,12 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {employees.map((emp) => (
-        <div key={emp.id} onClick={() => onEdit(emp)} className="group bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-200 transition-all duration-300 overflow-hidden flex flex-col relative cursor-pointer hover:-translate-y-1">
+        <div key={emp.id} onClick={() => onEdit(emp)} className="group bg-white rounded-xl md:rounded-2xl shadow-sm hover:shadow-md border border-slate-200 transition-all duration-300 overflow-hidden flex flex-col relative cursor-pointer hover:-translate-y-1">
           
-          {/* Top colored banner */}
-          <div className="h-20 w-full relative overflow-hidden" style={{ backgroundColor: getDeptColor(emp.department?.[0]) + '25' }}>
+          {/* Top colored banner - Compact on Mobile */}
+          <div className="h-14 md:h-20 w-full relative overflow-hidden" style={{ backgroundColor: getDeptColor(emp.department?.[0]) + '25' }}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/30 rounded-full -mr-10 -mt-10 blur-xl"></div>
             
             <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -328,10 +328,11 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
 
           </div>
           
-          <div className="px-4 pb-4 flex-1 flex flex-col -mt-10">
-            <div className="relative mb-3 self-start">
-              <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-sm border border-slate-100">
-                 <div className="w-full h-full rounded-xl overflow-hidden bg-gray-100 relative">
+          <div className="px-3 pb-3 md:px-4 md:pb-4 flex-1 flex flex-col -mt-8 md:-mt-10">
+            <div className="relative mb-2 md:mb-3 self-start">
+              {/* Compact Avatar */}
+              <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-white p-1 shadow-sm border border-slate-100">
+                 <div className="w-full h-full rounded-lg md:rounded-xl overflow-hidden bg-gray-100 relative">
                     {emp.photo_url ? (
                       <img 
                         src={emp.photo_url} 
@@ -340,25 +341,25 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
                         onError={(e) => (e.currentTarget.src = `https://ui-avatars.com/api/?name=${emp.full_name}&background=f1f5f9&color=64748b`)}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300"><User size={32} /></div>
+                      <div className="w-full h-full flex items-center justify-center text-gray-300"><User size={24} className="md:w-8 md:h-8" /></div>
                     )}
                  </div>
               </div>
               <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full shadow-sm border border-slate-100" title={getDeptName(emp.department?.[0])}>
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white" style={{ backgroundColor: getDeptColor(emp.department?.[0]) }}>
+                  <div className="w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-[8px] md:text-[9px] font-black text-white" style={{ backgroundColor: getDeptColor(emp.department?.[0]) }}>
                     {getDeptName(emp.department?.[0]).substring(0,2).toUpperCase()}
                   </div>
               </div>
             </div>
 
-            <div className="mb-3">
-              <h3 className="font-bold text-slate-800 text-base leading-tight mb-0.5 line-clamp-1">{emp.full_name}</h3>
-              <p className="text-xs font-bold text-blue-600 mb-1 line-clamp-1">{emp.position}</p>
+            <div className="mb-2 md:mb-3">
+              <h3 className="font-bold text-slate-800 text-sm md:text-base leading-tight mb-0.5 line-clamp-1">{emp.full_name}</h3>
+              <p className="text-[10px] md:text-xs font-bold text-blue-600 mb-1 line-clamp-1">{emp.position}</p>
               
               {/* Added NIK/ID Display */}
               {emp.nickname && (
                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded flex items-center gap-1 border border-slate-100">
+                    <span className="text-[8px] md:text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded flex items-center gap-1 border border-slate-100">
                         <Hash size={9} />
                         {emp.nickname}
                     </span>
@@ -366,28 +367,28 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
               )}
 
               {emp.department?.[0] && emp.subdepartment?.[0] && (
-                 <p className="text-[10px] text-slate-400 font-medium line-clamp-1">
+                 <p className="text-[9px] md:text-[10px] text-slate-400 font-medium line-clamp-1">
                    {getSubDeptName(emp.department[0], emp.subdepartment[0])}
                  </p>
               )}
             </div>
 
-            <div className="mt-auto space-y-2 pt-3 border-t border-slate-50">
+            <div className="mt-auto space-y-1.5 md:space-y-2 pt-2 md:pt-3 border-t border-slate-50">
               {emp.phone && (
-                <div className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-900 transition-colors">
-                  <Phone size={12} className="text-slate-400 flex-shrink-0" />
+                <div className="flex items-center gap-2 text-[10px] md:text-xs text-slate-600 hover:text-slate-900 transition-colors">
+                  <Phone size={10} className="text-slate-400 flex-shrink-0 md:w-3 md:h-3" />
                   <span className="truncate font-medium">{emp.phone}</span>
                 </div>
               )}
               {emp.email && (
-                <div className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-900 transition-colors">
-                  <Mail size={12} className="text-slate-400 flex-shrink-0" />
+                <div className="flex items-center gap-2 text-[10px] md:text-xs text-slate-600 hover:text-slate-900 transition-colors">
+                  <Mail size={10} className="text-slate-400 flex-shrink-0 md:w-3 md:h-3" />
                   <span className="truncate font-medium">{emp.email}</span>
                 </div>
               )}
               {emp.telegram && (
-                <div className="flex items-center gap-2 text-xs text-blue-500 hover:text-blue-600 transition-colors">
-                  <MessageCircle size={12} className="flex-shrink-0" />
+                <div className="flex items-center gap-2 text-[10px] md:text-xs text-blue-500 hover:text-blue-600 transition-colors">
+                  <MessageCircle size={10} className="flex-shrink-0 md:w-3 md:h-3" />
                   <span className="truncate font-medium">{emp.telegram}</span>
                 </div>
               )}
