@@ -32,8 +32,9 @@ const StatsChart: React.FC<StatsChartProps> = ({ values, color = "#3b82f6", inve
   // --- CONFIGURATION ---
   const SVG_WIDTH = 800;
   const SVG_HEIGHT = 250;
-  const PADDING_X = 30; // Increased padding for dots not to be cut off
-  const PADDING_Y = 30;
+  // Increased Padding to make chart look less "stretched" to edges and ensure dots aren't cut
+  const PADDING_X = 40; 
+  const PADDING_Y = 40; 
 
   // --- DATA PREPARATION ---
   
@@ -157,8 +158,8 @@ const StatsChart: React.FC<StatsChartProps> = ({ values, color = "#3b82f6", inve
             // Horizontal shift
             let transformX = '-50%';
             let marginLeft = '0px';
-            if (isNearLeft) { transformX = '0%'; marginLeft = '5px'; }
-            if (isNearRight) { transformX = '-100%'; marginLeft = '-5px'; }
+            if (isNearLeft) { transformX = '0%'; marginLeft = '10px'; }
+            if (isNearRight) { transformX = '-100%'; marginLeft = '-10px'; }
             
             // Vertical shift (Flip down if near top)
             // 'mt-3' pushes it down (below point), '-mt-3' pulls it closer when above
@@ -216,7 +217,7 @@ const StatsChart: React.FC<StatsChartProps> = ({ values, color = "#3b82f6", inve
                 return (
                     <g key={t}>
                         <line x1={PADDING_X} y1={y} x2={SVG_WIDTH - PADDING_X} y2={y} stroke="#f1f5f9" strokeWidth="1" />
-                        <text x={PADDING_X - 8} y={y + 3} fontSize="9" fill="#94a3b8" textAnchor="end" fontWeight="500">{Math.round(val)}</text>
+                        <text x={PADDING_X - 10} y={y + 3} fontSize="9" fill="#94a3b8" textAnchor="end" fontWeight="500">{Math.round(val)}</text>
                     </g>
                 );
             })}

@@ -17,57 +17,64 @@ const Settings: React.FC<SettingsProps> = ({ employees, onImport }) => {
     const [currency, setCurrency] = useState('THB');
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 p-6">
-            <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 bg-slate-800 text-white rounded-xl shadow-lg shadow-slate-200">
-                    <SettingsIcon size={24} />
+        <div className="flex flex-col h-full animate-in fade-in space-y-4">
+            
+            {/* Header / Tabs Container (Matches Stats Header Style) */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
+                <div className="flex items-center gap-3 px-1">
+                    <div className="p-2 bg-slate-800 text-white rounded-lg shadow-sm">
+                        <SettingsIcon size={18} />
+                    </div>
+                    <div>
+                        <h1 className="text-sm font-black text-slate-800 uppercase tracking-tight leading-none">Настройки</h1>
+                        <p className="text-[10px] text-slate-400 font-bold mt-0.5">Система и данные</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Настройки Системы</h1>
-                    <p className="text-slate-500 text-sm">Управление профилем компании и резервными копиями</p>
+
+                <div className="relative">
+                    <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-1 px-1">
+                        <button 
+                            onClick={() => setActiveTab('general')}
+                            className={`flex-shrink-0 px-4 py-2 text-xs font-bold rounded-lg transition-all border flex items-center gap-2 ${activeTab === 'general' ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
+                        >
+                            <Globe size={14} />
+                            Профиль
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('database')}
+                            className={`flex-shrink-0 px-4 py-2 text-xs font-bold rounded-lg transition-all border flex items-center gap-2 ${activeTab === 'database' ? 'bg-emerald-600 text-white border-emerald-600 shadow-md' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
+                        >
+                            <Database size={14} />
+                            База Данных
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto">
-                <button 
-                    onClick={() => setActiveTab('general')}
-                    className={`px-6 py-3 text-sm font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${activeTab === 'general' ? 'bg-white border-slate-800 text-slate-800 shadow-sm' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}
-                >
-                    <Globe size={18} />
-                    Общие (Профиль)
-                </button>
-                <button 
-                    onClick={() => setActiveTab('database')}
-                    className={`px-6 py-3 text-sm font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${activeTab === 'database' ? 'bg-white border-emerald-600 text-emerald-600 shadow-sm' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}
-                >
-                    <Database size={18} />
-                    База Данных
-                </button>
-            </div>
-
-            <div className="flex-1 bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-slate-200 overflow-hidden relative -top-[1px]">
+            {/* Content Area */}
+            <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
                 {activeTab === 'general' && (
-                    <div className="h-full overflow-y-auto p-8 custom-scrollbar animate-in fade-in">
-                        <div className="max-w-2xl">
-                            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Globe className="text-slate-400"/> Профиль Компании</h2>
+                    <div className="h-full overflow-y-auto p-4 md:p-6 custom-scrollbar animate-in fade-in">
+                        <div className="max-w-xl mx-auto space-y-6">
                             
-                            <div className="space-y-6">
+                            {/* Card Style Input Group */}
+                            <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Название Организации</label>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Название Организации</label>
                                     <input 
                                         value={companyName} 
                                         onChange={e => setCompanyName(e.target.value)} 
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800 text-sm shadow-sm"
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Основная Валюта</label>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Основная Валюта</label>
                                         <select 
                                             value={currency}
                                             onChange={e => setCurrency(e.target.value)}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800 text-sm shadow-sm appearance-none cursor-pointer"
                                         >
                                             <option value="THB">THB (Тайский Бат)</option>
                                             <option value="USD">USD (Доллар США)</option>
@@ -76,25 +83,25 @@ const Settings: React.FC<SettingsProps> = ({ employees, onImport }) => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Часовой пояс</label>
-                                        <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-500" disabled>
-                                            <option>Asia/Bangkok (GMT+7)</option>
-                                        </select>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Часовой пояс</label>
+                                        <div className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-500 text-sm flex items-center justify-between opacity-70">
+                                            <span>Asia/Bangkok (GMT+7)</span>
+                                        </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="pt-6 border-t border-slate-100">
-                                    <button className="flex items-center gap-2 px-6 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-slate-200">
-                                        <Save size={18} />
-                                        Сохранить настройки
-                                    </button>
-                                </div>
+                            <div className="pt-6 border-t border-slate-100 flex justify-end">
+                                <button className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-slate-200 text-sm">
+                                    <Save size={16} />
+                                    Сохранить настройки
+                                </button>
                             </div>
                         </div>
                     </div>
                 )}
                 {activeTab === 'database' && (
-                    <div className="h-full overflow-y-auto p-6 custom-scrollbar">
+                    <div className="h-full overflow-y-auto p-4 md:p-6 custom-scrollbar">
                         <ImportExport employees={employees} onImport={onImport} />
                     </div>
                 )}

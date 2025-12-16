@@ -1,8 +1,8 @@
 
-import React, { useState, useRef, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { ORGANIZATION_STRUCTURE } from '../constants';
 import { Employee } from '../types';
-import { User, X, Search, FileText, ChevronRight, Users, Crown, Target, Award, Copy, Check, MessageCircle, Phone, Hash, AlertTriangle, Zap } from 'lucide-react';
+import { User, X, Search, FileText, ChevronRight, Users, Crown, Target, Award, Copy, Check, MessageCircle, Phone, Hash, AlertTriangle, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface OrgChartProps {
   employees: Employee[];
@@ -18,10 +18,16 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // State for collapsible cards
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+
+  // Reset description expansion when department changes
+  useEffect(() => {
+      setIsDescExpanded(false);
+  }, [selectedDeptId, selectedSubDeptId]);
 
   // Auto-center scroll on mount
   useLayoutEffect(() => {
@@ -84,6 +90,7 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
   // Determine which description to show
   let descriptionTitle = '';
   let descriptionText = '';
+  let longDescriptionText = '';
   let vfpText = '';
   let functions: string[] = [];
   let mainStat = '';
@@ -96,11 +103,13 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
           const sub = currentDept.departments[selectedSubDeptId];
           descriptionTitle = sub.name;
           descriptionText = sub.description || '';
+          longDescriptionText = ''; // Sub-depts currently use only short desc
           vfpText = sub.vfp || '';
           managerName = sub.manager;
       } else {
           descriptionTitle = currentDept.fullName;
-          descriptionText = currentDept.longDescription || currentDept.description;
+          descriptionText = currentDept.description;
+          longDescriptionText = currentDept.longDescription || '';
           vfpText = currentDept.vfp || '';
           functions = currentDept.functions || [];
           mainStat = currentDept.mainStat || '';
@@ -283,7 +292,7 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
         {/* EMPLOYEE DRAWER (SLIDE OVER) */}
         {isDrawerOpen && currentDept && (
             <div className="absolute inset-0 z-50 flex justify-end bg-slate-900/10 backdrop-blur-[2px] animate-in fade-in duration-300">
-                <div className="w-full md:w-[550px] bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-100">
+                <div className="w-full md:w-[600px] bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-100">
                     
                     {/* Drawer Header (Full Width Text) */}
                     <div className="p-4 border-b border-slate-100 bg-white relative overflow-hidden flex items-start justify-between shadow-sm z-30">
@@ -306,18 +315,30 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
                         {/* DESCRIPTION SECTION (Before Manager) */}
                         <div className="bg-white p-6 border-b border-slate-100">
                              
-                             {/* Description Text */}
-                             {descriptionText && (
-                                <div className="mb-5">
-                                    <h4 className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 flex items-center gap-1"><FileText size={10}/> Описание</h4>
-                                    <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">{descriptionText}</p>
-                                </div>
-                             )}
+                             {/* Description Text (Expandable) */}
+                             <div className="mb-5">
+                                 <h4 className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 flex items-center gap-1"><FileText size={10}/> Описание</h4>
+                                 <div className={`text-sm text-slate-700 leading-relaxed font-medium transition-all ${isDescExpanded ? '' : 'line-clamp-3'}`}>
+                                     {isDescExpanded && longDescriptionText ? longDescriptionText : descriptionText}
+                                 </div>
+                                 {longDescriptionText && (
+                                     <button 
+                                        onClick={() => setIsDescExpanded(!isDescExpanded)} 
+                                        className="mt-2 text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                     >
+                                         {isDescExpanded ? (
+                                             <>Свернуть <ChevronUp size={12}/></>
+                                         ) : (
+                                             <>Читать полностью <ChevronDown size={12}/></>
+                                         )}
+                                     </button>
+                                 )}
+                             </div>
 
                              {/* Main Statistic (if exists) */}
                              {mainStat && (
-                                 <div className="mb-5 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                                      <h4 className="text-[10px] uppercase font-black text-blue-400 tracking-widest mb-1">Главная Статистика</h4>
+                                 <div className="mb-5 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                      <h4 className="text-[10px] uppercase font-black text-blue-400 tracking-widest mb-1.5">Главная Статистика</h4>
                                       <p className="text-sm font-bold text-blue-900">{mainStat}</p>
                                  </div>
                              )}
@@ -326,10 +347,10 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
                              {functions && functions.length > 0 && (
                                  <div className="mb-5">
                                       <h4 className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2">Основные функции</h4>
-                                      <ul className="space-y-1.5">
+                                      <ul className="space-y-2">
                                           {functions.map((fn, idx) => (
-                                              <li key={idx} className="text-xs text-slate-600 font-medium flex items-start gap-2">
-                                                  <div className="w-1 h-1 rounded-full bg-slate-400 mt-1.5 flex-shrink-0"></div>
+                                              <li key={idx} className="text-xs text-slate-700 font-semibold flex items-start gap-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 flex-shrink-0"></div>
                                                   {fn}
                                               </li>
                                           ))}
@@ -371,8 +392,8 @@ const OrgChart: React.FC<OrgChartProps> = ({ employees, onSelectEmployee }) => {
                              {vfpText && (
                                  <div className="mb-6">
                                      <h4 className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 flex items-center gap-1"><Award size={10}/> Ценный Конечный Продукт (ЦКП)</h4>
-                                     <div className="bg-slate-50 border-l-4 border-slate-300 p-3 rounded-r-lg">
-                                         <p className="text-sm font-bold text-slate-700 italic">"{vfpText}"</p>
+                                     <div className="bg-gradient-to-r from-slate-50 to-white border-l-4 border-slate-300 p-4 rounded-r-xl shadow-sm">
+                                         <p className="text-sm font-bold text-slate-800 italic leading-relaxed">"{vfpText}"</p>
                                      </div>
                                  </div>
                              )}

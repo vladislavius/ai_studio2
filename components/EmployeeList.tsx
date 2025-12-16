@@ -293,16 +293,16 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {employees.map((emp) => (
-        <div key={emp.id} onClick={() => onEdit(emp)} className="group bg-white rounded-3xl shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300 overflow-hidden flex flex-col relative cursor-pointer">
+        <div key={emp.id} onClick={() => onEdit(emp)} className="group bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-200 transition-all duration-300 overflow-hidden flex flex-col relative cursor-pointer hover:-translate-y-1">
           
           {/* Top colored banner */}
-          <div className="h-24 w-full relative overflow-hidden" style={{ backgroundColor: getDeptColor(emp.department?.[0]) + '20' }}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-10 -mt-10 blur-xl"></div>
+          <div className="h-20 w-full relative overflow-hidden" style={{ backgroundColor: getDeptColor(emp.department?.[0]) + '25' }}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/30 rounded-full -mr-10 -mt-10 blur-xl"></div>
             
             <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                 <button 
                   onClick={(e) => { e.stopPropagation(); onDelete(emp.id); }}
-                  className="p-1.5 bg-white/80 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-lg shadow-sm backdrop-blur-sm transition-all"
+                  className="p-1.5 bg-white/90 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-lg shadow-sm backdrop-blur-sm transition-all border border-slate-100"
                   title="Delete"
                 >
                   <Trash2 size={14} />
@@ -312,14 +312,14 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
             <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                <button 
                   onClick={(e) => quickExportTxt(e, emp)}
-                  className="p-1.5 bg-white/80 hover:bg-white text-gray-500 rounded-lg shadow-sm backdrop-blur-sm transition-all"
+                  className="p-1.5 bg-white/90 hover:bg-white text-slate-500 rounded-lg shadow-sm backdrop-blur-sm transition-all border border-slate-100"
                   title="Export Full TXT"
                 >
                   <FileText size={14} />
                 </button>
                 <button 
                   onClick={(e) => quickPrint(e, emp)}
-                  className="p-1.5 bg-white/80 hover:bg-white text-gray-500 rounded-lg shadow-sm backdrop-blur-sm transition-all"
+                  className="p-1.5 bg-white/90 hover:bg-white text-slate-500 rounded-lg shadow-sm backdrop-blur-sm transition-all border border-slate-100"
                   title="Print Full Dossier"
                 >
                   <Printer size={14} />
@@ -328,10 +328,10 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
 
           </div>
           
-          <div className="px-6 pb-6 flex-1 flex flex-col -mt-12">
-            <div className="relative mb-4 self-start">
-              <div className="w-24 h-24 rounded-3xl bg-white p-1 shadow-md">
-                 <div className="w-full h-full rounded-2xl overflow-hidden bg-gray-100 relative">
+          <div className="px-4 pb-4 flex-1 flex flex-col -mt-10">
+            <div className="relative mb-3 self-start">
+              <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-sm border border-slate-100">
+                 <div className="w-full h-full rounded-xl overflow-hidden bg-gray-100 relative">
                     {emp.photo_url ? (
                       <img 
                         src={emp.photo_url} 
@@ -340,55 +340,55 @@ const EmployeeList: React.FC<EmployeeListProps> = ({ employees, onEdit, onDelete
                         onError={(e) => (e.currentTarget.src = `https://ui-avatars.com/api/?name=${emp.full_name}&background=f1f5f9&color=64748b`)}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300"><User size={40} /></div>
+                      <div className="w-full h-full flex items-center justify-center text-gray-300"><User size={32} /></div>
                     )}
                  </div>
               </div>
-              <div className="absolute -bottom-2 -right-2 bg-white p-1 rounded-full shadow-sm" title={getDeptName(emp.department?.[0])}>
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: getDeptColor(emp.department?.[0]) }}>
+              <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full shadow-sm border border-slate-100" title={getDeptName(emp.department?.[0])}>
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white" style={{ backgroundColor: getDeptColor(emp.department?.[0]) }}>
                     {getDeptName(emp.department?.[0]).substring(0,2).toUpperCase()}
                   </div>
               </div>
             </div>
 
-            <div className="mb-4">
-              <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1">{emp.full_name}</h3>
-              <p className="text-sm font-medium text-blue-600 mb-1">{emp.position}</p>
+            <div className="mb-3">
+              <h3 className="font-bold text-slate-800 text-base leading-tight mb-0.5 line-clamp-1">{emp.full_name}</h3>
+              <p className="text-xs font-bold text-blue-600 mb-1 line-clamp-1">{emp.position}</p>
               
               {/* Added NIK/ID Display */}
               {emp.nickname && (
                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
-                        <Hash size={10} />
-                        NIK: {emp.nickname}
+                    <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded flex items-center gap-1 border border-slate-100">
+                        <Hash size={9} />
+                        {emp.nickname}
                     </span>
                  </div>
               )}
 
               {emp.department?.[0] && emp.subdepartment?.[0] && (
-                 <p className="text-xs text-gray-400 font-medium">
+                 <p className="text-[10px] text-slate-400 font-medium line-clamp-1">
                    {getSubDeptName(emp.department[0], emp.subdepartment[0])}
                  </p>
               )}
             </div>
 
-            <div className="mt-auto space-y-3 pt-4 border-t border-gray-50">
+            <div className="mt-auto space-y-2 pt-3 border-t border-slate-50">
               {emp.phone && (
-                <div className="flex items-center gap-3 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                  <Phone size={14} className="text-gray-400" />
-                  <span className="truncate">{emp.phone}</span>
+                <div className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-900 transition-colors">
+                  <Phone size={12} className="text-slate-400 flex-shrink-0" />
+                  <span className="truncate font-medium">{emp.phone}</span>
                 </div>
               )}
               {emp.email && (
-                <div className="flex items-center gap-3 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                  <Mail size={14} className="text-gray-400" />
-                  <span className="truncate">{emp.email}</span>
+                <div className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-900 transition-colors">
+                  <Mail size={12} className="text-slate-400 flex-shrink-0" />
+                  <span className="truncate font-medium">{emp.email}</span>
                 </div>
               )}
               {emp.telegram && (
-                <div className="flex items-center gap-3 text-sm text-blue-500 hover:text-blue-600 transition-colors">
-                  <MessageCircle size={14} />
-                  <span className="truncate">{emp.telegram}</span>
+                <div className="flex items-center gap-2 text-xs text-blue-500 hover:text-blue-600 transition-colors">
+                  <MessageCircle size={12} className="flex-shrink-0" />
+                  <span className="truncate font-medium">{emp.telegram}</span>
                 </div>
               )}
             </div>

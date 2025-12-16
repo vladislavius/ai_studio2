@@ -507,56 +507,60 @@ function App() {
               {currentView === 'statistics' && <StatisticsTab employees={employees} isOffline={isOffline} selectedDeptId={selectedDept} isAdmin={isAdmin} />}
 
               {currentView === 'employees' && isAdmin && (
-                <div className="flex flex-col h-full">
-                  <div className="flex flex-col md:flex-row justify-between md:items-end mb-6 gap-4">
-                      {/* Tabs */}
-                      <div className="flex border-b border-slate-200 overflow-x-auto">
-                        <button onClick={() => setEmployeeSubView('list')} className={`px-4 md:px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${employeeSubView === 'list' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}><List size={16}/> Справочник</button>
-                        <button onClick={() => setEmployeeSubView('birthdays')} className={`px-4 md:px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${employeeSubView === 'birthdays' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}><Cake size={16}/> Дни Рождения</button>
+                <div className="flex flex-col h-full space-y-4">
+                  
+                  {/* UNIFIED HEADER STYLE FOR EMPLOYEE VIEW */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
+                      
+                      {/* Row 1: Title & Tabs */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex bg-slate-100 p-1 rounded-lg self-start sm:self-auto">
+                              <button onClick={() => setEmployeeSubView('list')} className={`px-4 py-2 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${employeeSubView === 'list' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
+                                  <List size={14}/> Справочник
+                              </button>
+                              <button onClick={() => setEmployeeSubView('birthdays')} className={`px-4 py-2 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${employeeSubView === 'birthdays' ? 'bg-white shadow text-amber-600' : 'text-slate-500 hover:text-slate-700'}`}>
+                                  <Cake size={14}/> Дни Рождения
+                              </button>
+                          </div>
+                          
+                          {/* Total Count Badge */}
+                          {employeeSubView === 'list' && (
+                              <div className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 self-start sm:self-auto">
+                                  ВСЕГО: <span className="text-slate-800">{filteredEmployees.length}</span>
+                              </div>
+                          )}
                       </div>
 
-                      {/* NEW: Department Filter for List View */}
+                      {/* Row 2: Filter (Dropdown) - Only for List View */}
                       {employeeSubView === 'list' && (
-                        <div className="flex items-center gap-2 animate-in fade-in">
-                            <div className="relative">
-                                <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                                <select 
-                                    value={deptFilter} 
-                                    onChange={(e) => setDeptFilter(e.target.value)}
-                                    className="pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none appearance-none cursor-pointer shadow-sm hover:border-blue-300 transition-colors"
-                                >
-                                    <option value="all">Все департаменты</option>
-                                    <option disabled>──────────</option>
-                                    {DEPT_SORT_ORDER.map(deptId => {
-                                        const dept = ORGANIZATION_STRUCTURE[deptId];
-                                        if(!dept) return null;
-                                        return <option key={deptId} value={deptId}>{dept.name}</option>
-                                    })}
-                                </select>
-                                <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" />
-                            </div>
-                        </div>
+                          <div className="relative">
+                              <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                              <select 
+                                  value={deptFilter} 
+                                  onChange={(e) => setDeptFilter(e.target.value)}
+                                  className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none appearance-none cursor-pointer shadow-sm hover:border-blue-300 transition-colors uppercase tracking-wide"
+                              >
+                                  <option value="all">Все департаменты</option>
+                                  <option disabled>──────────</option>
+                                  {DEPT_SORT_ORDER.map(deptId => {
+                                      const dept = ORGANIZATION_STRUCTURE[deptId];
+                                      if(!dept) return null;
+                                      return <option key={deptId} value={deptId}>{dept.name}</option>
+                                  })}
+                              </select>
+                              <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" />
+                          </div>
                       )}
                   </div>
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar pb-20">
                     {employeeSubView === 'list' && (
                       <div className="animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex justify-between items-end mb-6">
-                          <div>
-                            <h2 className="text-xl md:text-2xl font-bold text-slate-800">Справочник сотрудников</h2>
-                            <p className="text-slate-500 mt-1 text-sm">
-                                Всего {filteredEmployees.length} записей
-                                {deptFilter !== 'all' && <span className="ml-1 text-blue-600 font-medium">(Фильтр: {ORGANIZATION_STRUCTURE[deptFilter]?.name})</span>}
-                            </p>
-                          </div>
-                        </div>
                         <EmployeeList employees={filteredEmployees} onEdit={handleEditClick} onDelete={handleDeleteEmployeeRequest} />
                       </div>
                     )}
                     {employeeSubView === 'birthdays' && (
                         <div className="animate-in fade-in slide-in-from-bottom-2">
-                            <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-6">Календарь Дней Рождения</h2>
                             <Birthdays employees={employees} />
                         </div>
                     )}
