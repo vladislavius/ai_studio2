@@ -688,27 +688,20 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                               </div>
                               <table className="w-full text-sm text-left">
                                   <tbody className="divide-y divide-slate-100">
-                                      {grouped[deptId].map(def => {
-                                          const vals = allLatestValues[def.id] || [];
-                                          const { current, change, slope } = analyzeTrend(vals, def.inverted);
-                                          const isSlopeUp = slope > 0;
-                                          let isGoodOutcome = isSlopeUp;
-                                          if (def.inverted) isGoodOutcome = !isSlopeUp;
-
+                                      {grouped[deptId].map(stat => {
+                                          const vals = getFilteredValues(stat.id);
+                                          const { current, change, slope } = analyzeTrend(vals, stat.inverted);
+                                          const isGood = stat.inverted ? slope <= 0 : slope >= 0;
+                                          const trendColor = isGood ? 'text-emerald-600' : 'text-rose-600';
+                                          
                                           return (
-                                              <tr key={def.id} className="hover:bg-blue-50/30 group transition-colors" onClick={() => setExpandedStatId(def.id)}>
-                                                  <td className="px-6 py-3 font-bold text-slate-700 cursor-pointer">{def.title}</td>
-                                                  <td className="px-6 py-2 text-slate-500 text-xs">{getOwnerName(def.owner_id || '')}</td>
-                                                  <td className="px-6 py-2">
-                                                      <div className="flex items-center gap-2">
-                                                          <span className="font-black text-slate-800">{current.toLocaleString()}</span>
-                                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isGoodOutcome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                              {slope >= 0 ? '↑' : '↓'} {Math.abs(change * 100).toFixed(0)}%
-                                                          </span>
-                                                      </div>
+                                              <tr key={stat.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => !isEditMode && setExpandedStatId(stat.id)}>
+                                                  <td className="px-6 py-4 font-bold text-slate-700">{stat.title}</td>
+                                                  <td className="px-6 py-4 text-right">
+                                                      <div className="font-black text-slate-800">{current.toLocaleString()}</div>
                                                   </td>
-                                                  <td className="px-6 py-2 text-right">
-                                                      {isAdmin && <button onClick={(e) => { e.stopPropagation(); handleOpenValues(def); }} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"><Edit2 size={16}/></button>}
+                                                  <td className={`px-6 py-4 text-right font-bold text-xs ${trendColor}`}>
+                                                      {vals.length > 1 ? (slope > 0 ? '↗' : '↘') + ' ' + Math.abs(change*100).toFixed(1) + '%' : '-'}
                                                   </td>
                                               </tr>
                                           );
@@ -724,194 +717,207 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] relative bg-slate-50 p-4 md:p-6">
-        
-        {/* Controls */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <div className="flex items-center gap-4">
-                <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex">
-                    <button onClick={() => setDisplayMode('dashboard')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${displayMode === 'dashboard' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:bg-slate-50'}`}><LayoutDashboard size={16}/> Дашборд</button>
-                    <button onClick={() => setDisplayMode('list')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${displayMode === 'list' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:bg-slate-50'}`}><List size={16}/> Список</button>
-                </div>
-                
-                <div className="flex gap-2">
-                    <button onClick={handleDownloadStatsCSV} className="px-4 py-2 bg-white text-emerald-700 border border-emerald-200 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-emerald-50 transition-all shadow-sm" title="Скачать список статистик в CSV">
-                        <Download size={16}/> <span className="hidden sm:inline">Экспорт CSV</span>
-                    </button>
-                    
-                    {isAdmin && (
-                        <>
-                            <button onClick={handleImportClick} className="px-4 py-2 bg-white text-blue-700 border border-blue-200 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-blue-50 transition-all shadow-sm" title="Импорт настроек статистик из CSV">
-                                <Upload size={16}/> <span className="hidden sm:inline">Импорт</span>
-                            </button>
-                            <input type="file" ref={fileInputRef} onChange={handleImportStatsCSV} className="hidden" accept=".csv"/>
-                        </>
-                    )}
-                </div>
+      <div className="flex flex-col h-full animate-in fade-in space-y-4">
+          {/* Header Controls */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+             <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                 <button onClick={() => setDisplayMode('dashboard')} className={`p-2 rounded-md transition-all ${displayMode === 'dashboard' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><LayoutDashboard size={20}/></button>
+                 <button onClick={() => setDisplayMode('list')} className={`p-2 rounded-md transition-all ${displayMode === 'list' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><List size={20}/></button>
+             </div>
+             
+             <div className="flex items-center gap-2">
+                 <div className="flex items-center bg-slate-100 rounded-lg p-1 mr-2">
+                      {PERIODS.map(p => (
+                          <button key={p.id} onClick={() => setSelectedPeriod(p.id)} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${selectedPeriod === p.id ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>{p.label}</button>
+                      ))}
+                 </div>
+                 
+                 {isAdmin && (
+                    <>
+                        <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2 rounded-lg border transition-all ${isEditMode ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`} title="Режим редактирования">
+                            <Edit2 size={20}/>
+                        </button>
+                        <button onClick={handleDownloadStatsCSV} className="p-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50" title="Экспорт CSV"><Download size={20}/></button>
+                        <button onClick={handleImportClick} className="p-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50" title="Импорт CSV"><Upload size={20}/></button>
+                        <input type="file" ref={fileInputRef} onChange={handleImportStatsCSV} accept=".csv" className="hidden" />
+                    </>
+                 )}
+             </div>
+          </div>
 
-                {isAdmin && (
-                    <button onClick={() => setIsEditMode(!isEditMode)} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border ${isEditMode ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-100' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{isEditMode ? <><X size={16}/> Завершить</> : <><Edit2 size={16}/> Конструктор</>}</button>
-                )}
-            </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
+              {displayMode === 'dashboard' ? renderDashboardView() : renderListView()}
+          </div>
 
-            {displayMode === 'dashboard' && (
-                <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-200 overflow-x-auto w-full md:w-auto">
-                    {PERIODS.map(p => (
-                        <button key={p.id} onClick={() => setSelectedPeriod(p.id)} className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPeriod === p.id ? 'bg-blue-100 text-blue-700 shadow-sm ring-1 ring-blue-100' : 'text-slate-500 hover:bg-slate-50'}`}>{p.label}</button>
-                    ))}
-                </div>
-            )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-0 md:pr-2 pb-20">
-             {displayMode === 'dashboard' ? renderDashboardView() : renderListView()}
-        </div>
-
-        {/* --- EXPANDED STAT VIEW MODAL --- */}
-        {expandedStatId && (() => {
-            const stat = definitions.find(d => d.id === expandedStatId);
-            if (!stat) return null;
-            const vals = getFilteredValues(stat.id);
-            const { current, change, slope } = analyzeTrend(vals, stat.inverted);
-            const isSlopeUp = slope > 0;
-            let isGoodOutcome = isSlopeUp;
-            if (stat.inverted) isGoodOutcome = !isSlopeUp;
-            const trendColorHex = isGoodOutcome ? "#10b981" : "#f43f5e";
-            const ownerName = getOwnerName(stat.owner_id || '');
-            const deptColor = ORGANIZATION_STRUCTURE[getParentDeptId(stat.owner_id || 'other')]?.color || '#cbd5e1';
-
-            return (
-                <div className="fixed inset-0 z-[60] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8" onClick={() => setExpandedStatId(null)}>
-                    <div 
-                        className="bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 relative" 
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white z-10">
-                            <div className="flex gap-4">
-                                <div className="w-1.5 self-stretch rounded-full" style={{backgroundColor: deptColor}}></div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h2 className="text-2xl font-black text-slate-800">{stat.title}</h2>
-                                        {stat.inverted && (
-                                            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                                                Обратная
-                                            </span>
+          {/* Expanded Modal */}
+          {expandedStatId && (
+               <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setExpandedStatId(null)}>
+                   <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                       <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+                           <h3 className="font-bold text-lg text-slate-800">{definitions.find(d => d.id === expandedStatId)?.title}</h3>
+                           <button onClick={() => setExpandedStatId(null)} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+                       </div>
+                       <div className="flex-1 p-6 bg-slate-50 overflow-y-auto">
+                            {(() => {
+                                const stat = definitions.find(d => d.id === expandedStatId);
+                                if (!stat) return null;
+                                const vals = getFilteredValues(stat.id);
+                                const { current, change, slope } = analyzeTrend(vals, stat.inverted);
+                                return (
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-200 flex-1">
+                                                <div className="text-sm text-slate-500 font-medium mb-1">Текущее значение</div>
+                                                <div className="text-4xl font-black text-slate-900">{current.toLocaleString()}</div>
+                                            </div>
+                                            <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-200 flex-1">
+                                                <div className="text-sm text-slate-500 font-medium mb-1">Динамика ({selectedPeriod})</div>
+                                                <div className={`text-2xl font-bold flex items-center gap-2 ${slope > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                    {slope > 0 ? <TrendingUp size={24}/> : <TrendingDown size={24}/>}
+                                                    {Math.abs(change * 100).toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="h-96 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                                            <StatsChart values={vals} inverted={stat.inverted} isDouble={stat.is_double} />
+                                        </div>
+                                        {isAdmin && (
+                                            <div className="flex justify-end">
+                                                <button onClick={() => { setExpandedStatId(null); handleOpenValues(stat); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700">
+                                                    Редактировать значения
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
-                                    <div className="text-sm text-slate-500 font-medium">
-                                        Владелец: <span className="text-slate-700 font-bold">{ownerName}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-right flex items-start gap-4">
-                                <div>
-                                    <div className="text-4xl font-black text-slate-900 tracking-tight">{current.toLocaleString()}</div>
-                                    {vals.length > 1 && (
-                                        <div className={`text-sm font-bold flex items-center justify-end gap-1 mt-1 ${isGoodOutcome ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            {slope >= 0 ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}
-                                            {Math.abs(change * 100).toFixed(1)}%
-                                        </div>
-                                    )}
-                                </div>
-                                <button onClick={() => setExpandedStatId(null)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
-                                    <X size={20} className="text-slate-500"/>
-                                </button>
-                            </div>
-                        </div>
+                                );
+                            })()}
+                       </div>
+                   </div>
+               </div>
+          )}
 
-                        {/* Chart Area */}
-                        <div className="flex-1 bg-white p-6 min-h-0">
-                            <StatsChart key={selectedPeriod} values={vals} color={trendColorHex} inverted={stat.inverted} isDouble={stat.is_double} />
+          {/* Edit Definition Modal */}
+          {editingStatDef && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95">
+                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-slate-800">{editingStatDef.id ? 'Редактировать' : 'Новая Статистика'}</h3>
+                            <button onClick={() => setEditingStatDef(null)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
                         </div>
-
-                        {/* Footer / Details */}
-                        <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col md:flex-row gap-6">
-                            <div className="flex-1">
-                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Info size={14}/> Описание</h4>
-                                <p className="text-sm text-slate-700 leading-relaxed font-medium">{stat.description || "Описание отсутствует."}</p>
-                            </div>
-                            <div className="flex-1">
-                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><HelpCircle size={14}/> Методика Расчета</h4>
-                                <div className="bg-white p-3 rounded-xl border border-slate-200 text-sm text-slate-600 font-medium">
-                                    {stat.calculation_method || "Прямой ввод данных."}
-                                </div>
-                            </div>
-                            {isAdmin && (
-                                <div className="flex flex-col justify-end">
-                                    <button 
-                                        onClick={() => handleOpenValues(stat)} 
-                                        className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
-                                    >
-                                        <Calendar size={18}/> Внести данные
-                                    </button>
-                                </div>
-                            )}
+                        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                             <div>
+                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Название</label>
+                                 <input value={editingStatDef.title || ''} onChange={e => setEditingStatDef({...editingStatDef, title: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500" placeholder="Название..."/>
+                             </div>
+                             <div>
+                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Владелец</label>
+                                 <select value={editingStatDef.owner_id || ''} onChange={e => setEditingStatDef({...editingStatDef, owner_id: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl outline-none bg-white">
+                                     <option value="">Выберите...</option>
+                                     {Object.values(ORGANIZATION_STRUCTURE).map(d => (
+                                         <React.Fragment key={d.id}>
+                                             <option value={d.id}>{d.name}</option>
+                                             {d.departments && Object.values(d.departments).map(s => <option key={s.id} value={s.id}>&nbsp;&nbsp;↳ {s.name}</option>)}
+                                         </React.Fragment>
+                                     ))}
+                                 </select>
+                             </div>
+                             <div>
+                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Описание</label>
+                                 <textarea value={editingStatDef.description || ''} onChange={e => setEditingStatDef({...editingStatDef, description: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl outline-none h-24" placeholder="Описание..."/>
+                             </div>
+                             <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer"><input type="checkbox" checked={editingStatDef.inverted || false} onChange={e => setEditingStatDef({...editingStatDef, inverted: e.target.checked})} className="rounded text-blue-600"/> Обратная (Меньше = Лучше)</label>
+                                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer"><input type="checkbox" checked={editingStatDef.is_double || false} onChange={e => setEditingStatDef({...editingStatDef, is_double: e.target.checked})} className="rounded text-blue-600"/> Двойная</label>
+                                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer"><input type="checkbox" checked={editingStatDef.is_favorite || false} onChange={e => setEditingStatDef({...editingStatDef, is_favorite: e.target.checked})} className="rounded text-blue-600"/> ГСД (Главная)</label>
+                             </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+                            <button onClick={() => setEditingStatDef(null)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-colors">Отмена</button>
+                            <button onClick={handleCreateOrUpdateStat} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-colors">Сохранить</button>
                         </div>
                     </div>
                 </div>
-            );
-        })()}
+          )}
 
-        {/* --- STAT DEFINITION MODAL --- */}
-        {editingStatDef && (
-            <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6 animate-in zoom-in-95 flex flex-col max-h-[90vh]">
-                     <div className="flex justify-between items-center mb-6 border-b pb-4">
-                        <h3 className="font-bold text-lg text-slate-800">{editingStatDef.id ? 'Редактировать статистику' : 'Создать статистику'}</h3>
-                        <button onClick={() => setEditingStatDef(null)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
-                    </div>
-                    {(isOffline || !supabase) && (
-                        <div className="mb-4 p-3 bg-amber-50 text-amber-800 text-xs rounded-xl flex items-start gap-2 border border-amber-100"><AlertCircle size={16} className="mt-0.5 flex-shrink-0"/><div><strong>Внимание: Офлайн режим</strong><p className="mt-0.5 opacity-80">Изменения сохранятся только в памяти браузера.</p></div></div>
-                    )}
-                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Название *</label><input value={editingStatDef.title || ''} onChange={e => setEditingStatDef({...editingStatDef, title: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 p-3 rounded-xl font-bold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Например: Валовый Доход" /></div>
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Владелец (Департамент) *</label><select value={editingStatDef.owner_id || ''} onChange={e => setEditingStatDef({...editingStatDef, owner_id: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 p-3 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Выберите владельца...</option>{Object.values(ORGANIZATION_STRUCTURE).map(dept => (<React.Fragment key={dept.id}><option value={dept.id} className="font-bold text-slate-900">⭐ {dept.fullName}</option>{dept.departments && Object.values(dept.departments).map(sub => (<option key={sub.id} value={sub.id} className="text-slate-600">&nbsp;&nbsp;&nbsp;↳ {sub.name}</option>))}</React.Fragment>))}</select></div>
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Описание</label><textarea value={editingStatDef.description || ''} onChange={e => setEditingStatDef({...editingStatDef, description: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 p-3 rounded-xl min-h-[80px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Что измеряем..." /></div>
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Методика Расчета</label><input value={editingStatDef.calculation_method || ''} onChange={e => setEditingStatDef({...editingStatDef, calculation_method: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 p-3 rounded-xl text-sm" placeholder="Как считаем..." /></div>
-                        <div className="flex flex-col gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={editingStatDef.is_favorite || false} onChange={e => setEditingStatDef({...editingStatDef, is_favorite: e.target.checked})} className="h-4 w-4 rounded border-slate-300 text-blue-600" /><span className="text-sm font-medium text-slate-700">ГСД</span></label>
-                            <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={editingStatDef.inverted || false} onChange={e => setEditingStatDef({...editingStatDef, inverted: e.target.checked})} className="h-4 w-4 rounded border-slate-300 text-blue-600" /><span className="text-sm font-medium text-slate-700">Обратная (Меньше = Лучше)</span></label>
-                            <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={editingStatDef.is_double || false} onChange={e => setEditingStatDef({...editingStatDef, is_double: e.target.checked})} className="h-4 w-4 rounded border-slate-300 text-blue-600" /><span className="text-sm font-medium text-slate-700">Двойная (2 графика)</span></label>
-                        </div>
-                    </div>
-                    <button onClick={handleCreateOrUpdateStat} className="mt-6 w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2"><Save size={18}/> Сохранить</button>
-                </div>
-            </div>
-        )}
-
-        {/* --- VALUE ENTRY MODAL (REUSED) --- */}
-        {isValueModalOpen && selectedStatForValues && (
-             <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 flex flex-col max-h-[80vh]">
-                     <div className="flex justify-between items-center mb-4 border-b pb-4">
-                        <div><h3 className="font-bold text-sm text-slate-800 line-clamp-1">{selectedStatForValues.title}</h3><p className="text-xs text-slate-400">Ввод данных</p></div><button onClick={() => setIsValueModalOpen(false)}><X size={18} className="text-slate-400"/></button>
-                    </div>
-                    <div className="bg-slate-50 p-3 rounded-xl mb-4">
-                        <div className="flex gap-2 mb-2">
-                             <input type="date" value={editingValue.date || ''} onChange={e => setEditingValue({...editingValue, date: e.target.value})} className="border border-slate-300 bg-white p-2 rounded-lg text-xs w-28" />
-                        </div>
-                        <div className="flex flex-col gap-2">
-                             <input type="number" value={editingValue.value || 0} onChange={e => setEditingValue({...editingValue, value: parseFloat(e.target.value)})} className="w-full border border-slate-300 bg-white p-2 rounded-lg text-sm font-bold" placeholder={selectedStatForValues.is_double ? "Значение 1" : "Значение"} />
-                             {selectedStatForValues.is_double && (
-                                 <input type="number" value={editingValue.value2 || 0} onChange={e => setEditingValue({...editingValue, value2: parseFloat(e.target.value)})} className="w-full border border-slate-300 bg-white p-2 rounded-lg text-sm font-bold" placeholder="Значение 2" />
-                             )}
-                        </div>
-                        <button onClick={handleSaveValue} className="w-full mt-3 bg-blue-600 text-white py-2 rounded-lg font-bold text-xs">Сохранить запись</button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
-                        {currentStatValues.map(val => (
-                            <div key={val.id} className="flex justify-between items-center p-2 hover:bg-slate-50 rounded border-b border-transparent hover:border-slate-100 text-xs">
-                                <div><span className="font-bold mr-2">{val.value}{selectedStatForValues.is_double ? ` / ${val.value2 || 0}` : ''}</span><span className="text-slate-400">{format(new Date(val.date), 'dd.MM.yy')}</span></div>
-                                <button className="text-blue-500" onClick={() => setEditingValue(val)}><Edit2 size={12}/></button>
+          {/* Edit Values Modal */}
+          {isValueModalOpen && selectedStatForValues && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[85vh]">
+                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <h3 className="font-bold text-slate-800 leading-tight">{selectedStatForValues.title}</h3>
+                                <p className="text-xs text-slate-500">Редактирование значений</p>
                             </div>
-                        ))}
+                            <button onClick={() => setIsValueModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+                        </div>
+                        
+                        {/* Editor Input */}
+                        <div className="p-4 border-b border-slate-100 bg-blue-50/50">
+                             <div className="flex gap-3">
+                                 <div className="w-1/3">
+                                     <label className="text-[10px] font-bold text-slate-400 uppercase">Дата</label>
+                                     <input type="date" value={editingValue?.date || ''} onChange={e => setEditingValue({...editingValue, date: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg text-sm font-medium"/>
+                                 </div>
+                                 <div className="flex-1">
+                                     <label className="text-[10px] font-bold text-slate-400 uppercase">Значение</label>
+                                     <input type="number" value={editingValue?.value || 0} onChange={e => setEditingValue({...editingValue, value: parseFloat(e.target.value)})} className="w-full p-2 border border-slate-200 rounded-lg text-sm font-bold"/>
+                                 </div>
+                                 {selectedStatForValues.is_double && (
+                                     <div className="flex-1">
+                                         <label className="text-[10px] font-bold text-slate-400 uppercase">Вал 2</label>
+                                         <input type="number" value={editingValue?.value2 || 0} onChange={e => setEditingValue({...editingValue, value2: parseFloat(e.target.value)})} className="w-full p-2 border border-slate-200 rounded-lg text-sm font-bold"/>
+                                     </div>
+                                 )}
+                             </div>
+                             <div className="flex justify-end mt-3 gap-2">
+                                 {editingValue.id && <button onClick={() => setEditingValue({ definition_id: selectedStatForValues.id, date: new Date().toISOString().split('T')[0], value: 0, value2: 0 })} className="text-xs text-slate-400 underline self-center mr-2">Отмена</button>}
+                                 <button onClick={handleSaveValue} className="px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-blue-700 flex items-center gap-1"><Save size={14}/> Сохранить</button>
+                             </div>
+                        </div>
+
+                        {/* History List */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                            {currentStatValues.length === 0 && <div className="text-center py-8 text-slate-400 text-sm">Нет данных</div>}
+                            <table className="w-full text-sm">
+                                <thead className="bg-slate-50 text-slate-400 font-bold text-xs uppercase sticky top-0">
+                                    <tr><th className="px-3 py-2 text-left">Дата</th><th className="px-3 py-2 text-right">Значение</th><th className="px-3 py-2 text-right">Действия</th></tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {currentStatValues.map(val => (
+                                        <tr key={val.id} className="hover:bg-slate-50">
+                                            <td className="px-3 py-2 text-slate-600">{format(new Date(val.date), 'dd.MM.yyyy')}</td>
+                                            <td className="px-3 py-2 text-right font-bold text-slate-800">
+                                                {val.value.toLocaleString()} 
+                                                {selectedStatForValues.is_double && <span className="text-slate-400 ml-1">/ {val.value2?.toLocaleString()}</span>}
+                                            </td>
+                                            <td className="px-3 py-2 text-right">
+                                                 <div className="flex justify-end gap-1">
+                                                     <button onClick={() => setEditingValue(val)} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><Edit2 size={14}/></button>
+                                                     <button onClick={async () => {
+                                                         if(!confirm('Удалить?')) return;
+                                                         if(isOffline || !supabase) {
+                                                             const newVals = currentStatValues.filter(v => v.id !== val.id);
+                                                             setCurrentStatValues(newVals);
+                                                             setAllLatestValues(prev => ({ ...prev, [selectedStatForValues.id]: newVals }));
+                                                         } else {
+                                                             await supabase.from('statistics_values').delete().eq('id', val.id);
+                                                             const { data } = await supabase.from('statistics_values').select('*').eq('definition_id', selectedStatForValues.id).order('date', {ascending: false});
+                                                             setCurrentStatValues(data || []);
+                                                             fetchAllValues();
+                                                         }
+                                                     }} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 size={14}/></button>
+                                                 </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-             </div>
-        )}
-    </div>
+          )}
+
+      </div>
   );
 };
 
