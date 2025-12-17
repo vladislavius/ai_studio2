@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { StatisticDefinition, StatisticValue, WiseCondition, Employee } from '../types';
@@ -480,48 +481,49 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
              </div>
           )}
 
-          {/* VALUES EDITOR MODAL - Fixed for mobile overlaps */}
+          {/* VALUES EDITOR MODAL - Fixed for mobile overlaps and oversized inputs */}
           {isValueModalOpen && selectedStatForValues && (
               <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-2 sm:p-4">
                   <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[90vh]">
-                      <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 flex-shrink-0">
+                      <div className="p-3 md:p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 flex-shrink-0">
                           <div className="min-w-0 pr-4">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Редактор значений</div>
-                              <h3 className="font-bold text-sm sm:text-base text-slate-800 leading-tight truncate">{selectedStatForValues.title}</h3>
+                              <div className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Редактор значений</div>
+                              <h3 className="font-bold text-xs sm:text-base text-slate-800 leading-tight truncate max-w-[250px]">{selectedStatForValues.title}</h3>
                           </div>
-                          <button onClick={() => setIsValueModalOpen(false)} className="p-1.5 bg-slate-200/50 rounded-full flex-shrink-0"><X size={20} className="text-slate-500"/></button>
+                          <button onClick={() => setIsValueModalOpen(false)} className="p-1.5 bg-slate-200/50 rounded-full flex-shrink-0"><X size={18} className="text-slate-500"/></button>
                       </div>
                       
-                      {/* Editor Form - Fixed mobile grid/flex to prevent squeeze */}
-                      <div className="p-4 bg-blue-50 border-b border-blue-100 flex flex-col gap-4 flex-shrink-0 shadow-inner">
-                          <div className="flex flex-col sm:flex-row gap-3">
+                      {/* Editor Form - Compacted for mobile stability */}
+                      <div className="p-3 md:p-4 bg-blue-50 border-b border-blue-100 flex flex-col gap-3 flex-shrink-0 shadow-inner">
+                          <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
                               <div className="flex-1">
-                                  <label className="block text-[10px] font-black text-blue-400 uppercase mb-1 ml-1">Дата</label>
+                                  <label className="block text-[9px] font-black text-blue-400 uppercase mb-1 ml-1">Дата</label>
                                   <input 
                                       type="date" 
                                       value={editingValue?.date || ''} 
                                       onChange={e => setEditingValue({...editingValue, date: e.target.value})} 
-                                      className="w-full border border-blue-200 bg-white rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400 shadow-sm h-11" 
+                                      className="w-full border border-blue-200 bg-white rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[11px] md:text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400 shadow-sm min-h-[38px] md:min-h-[42px] appearance-none" 
+                                      style={{ WebkitAppearance: 'none' }}
                                   />
                               </div>
                               <div className="flex-1">
-                                  <label className="block text-[10px] font-black text-blue-400 uppercase mb-1 ml-1">Значение 1</label>
+                                  <label className="block text-[9px] font-black text-blue-400 uppercase mb-1 ml-1">Значение 1</label>
                                   <input 
                                       type="number" 
                                       value={editingValue?.value || ''} 
                                       onChange={e => setEditingValue({...editingValue, value: parseFloat(e.target.value)})} 
-                                      className="w-full border border-blue-200 bg-white rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400 shadow-sm h-11" 
+                                      className="w-full border border-blue-200 bg-white rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[11px] md:text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400 shadow-sm min-h-[38px] md:min-h-[42px]" 
                                       placeholder="0"
                                   />
                               </div>
                               {selectedStatForValues.is_double && (
                                   <div className="flex-1">
-                                      <label className="block text-[10px] font-black text-blue-400 uppercase mb-1 ml-1">Значение 2</label>
+                                      <label className="block text-[9px] font-black text-blue-400 uppercase mb-1 ml-1">Значение 2</label>
                                       <input 
                                           type="number" 
                                           value={editingValue?.value2 || ''} 
                                           onChange={e => setEditingValue({...editingValue, value2: parseFloat(e.target.value)})} 
-                                          className="w-full border border-blue-200 bg-white rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400 shadow-sm h-11" 
+                                          className="w-full border border-blue-200 bg-white rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[11px] md:text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400 shadow-sm min-h-[38px] md:min-h-[42px]" 
                                           placeholder="0"
                                       />
                                   </div>
@@ -529,36 +531,36 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                           </div>
                           <div className="flex justify-end gap-2">
                               {editingValue?.id && (
-                                  <button onClick={() => setEditingValue({ definition_id: selectedStatForValues.id, date: new Date().toISOString().split('T')[0], value: 0, value2: 0 })} className="px-4 py-2.5 text-slate-500 font-bold hover:bg-slate-200 rounded-xl text-xs transition-colors">Отмена</button>
+                                  <button onClick={() => setEditingValue({ definition_id: selectedStatForValues.id, date: new Date().toISOString().split('T')[0], value: 0, value2: 0 })} className="px-3 py-1.5 text-slate-500 font-bold hover:bg-slate-200 rounded-lg text-[10px] transition-colors">Отмена</button>
                               )}
-                              <button onClick={handleSaveValue} className="px-8 py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl shadow-lg shadow-blue-200 flex items-center gap-2 hover:bg-blue-700 transition-all"><Plus size={16}/> {editingValue?.id ? 'Обновить' : 'Добавить'}</button>
+                              <button onClick={handleSaveValue} className="px-6 md:px-8 py-1.5 md:py-2 bg-blue-600 text-white text-[10px] md:text-xs font-black rounded-lg shadow-lg shadow-blue-200 flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-all"><Plus size={14}/> {editingValue?.id ? 'Обновить' : 'Добавить'}</button>
                           </div>
                       </div>
 
                       {/* Values List Area */}
                       <div className="flex-1 overflow-y-auto custom-scrollbar p-0 bg-white touch-pan-y">
                           {currentStatValues.length === 0 ? (
-                              <div className="p-12 text-center text-slate-300 flex flex-col items-center gap-2"><Calendar size={48} className="opacity-20"/><p className="text-sm font-medium">История пуста</p></div>
+                              <div className="p-8 text-center text-slate-300 flex flex-col items-center gap-2"><Calendar size={32} className="opacity-20"/><p className="text-[11px] font-medium">История пуста</p></div>
                           ) : (
-                              <table className="w-full text-sm">
-                                  <thead className="bg-slate-50 text-slate-400 font-black text-[10px] uppercase sticky top-0 z-10 shadow-sm">
+                              <table className="w-full text-[11px] md:text-sm">
+                                  <thead className="bg-slate-50 text-slate-400 font-black text-[9px] uppercase sticky top-0 z-10 shadow-sm">
                                       <tr>
-                                          <th className="px-4 py-3 text-left">Дата</th>
-                                          <th className="px-4 py-3 text-right">Значение</th>
-                                          {selectedStatForValues.is_double && <th className="px-4 py-3 text-right">Вал 2</th>}
-                                          <th className="px-4 py-3 text-right">Действия</th>
+                                          <th className="px-3 md:px-4 py-2 text-left">Дата</th>
+                                          <th className="px-3 md:px-4 py-2 text-right">Значение</th>
+                                          {selectedStatForValues.is_double && <th className="px-3 md:px-4 py-2 text-right">Вал 2</th>}
+                                          <th className="px-3 md:px-4 py-2 text-right">Действия</th>
                                       </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-100">
                                       {currentStatValues.map(val => (
                                           <tr key={val.id} className="hover:bg-blue-50/30 transition-colors group">
-                                              <td className="px-4 py-3 text-slate-600 font-bold text-xs">{format(new Date(val.date), 'dd.MM.yyyy')}</td>
-                                              <td className="px-4 py-3 text-right font-black text-slate-800 text-sm">{val.value.toLocaleString()}</td>
-                                              {selectedStatForValues.is_double && <td className="px-4 py-3 text-right font-black text-slate-400 text-sm">{(val.value2 || 0).toLocaleString()}</td>}
-                                              <td className="px-4 py-3 text-right">
+                                              <td className="px-3 md:px-4 py-2 text-slate-600 font-bold">{format(new Date(val.date), 'dd.MM.yyyy')}</td>
+                                              <td className="px-3 md:px-4 py-2 text-right font-black text-slate-800">{val.value.toLocaleString()}</td>
+                                              {selectedStatForValues.is_double && <td className="px-3 md:px-4 py-2 text-right font-black text-slate-400">{(val.value2 || 0).toLocaleString()}</td>}
+                                              <td className="px-3 md:px-4 py-2 text-right">
                                                   <div className="flex justify-end gap-1">
-                                                      <button onClick={() => setEditingValue(val)} className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={14}/></button>
-                                                      <button onClick={() => handleDeleteValue(val.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14}/></button>
+                                                      <button onClick={() => setEditingValue(val)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={12}/></button>
+                                                      <button onClick={() => handleDeleteValue(val.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={12}/></button>
                                                   </div>
                                               </td>
                                           </tr>

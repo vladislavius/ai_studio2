@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
 
 interface ErrorBoundaryProps {
@@ -11,27 +11,27 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fix: Use named Component import and proper generic parameters to ensure TypeScript identifies the class properties correctly
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    // Fix: state property is inherited from Component
-    this.state = {
-      hasError: false,
-      error: null,
-    };
-  }
+// Extending React.Component with explicit props and state interfaces ensures the compiler recognizes inherited properties.
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Explicitly defining the state property as a class field ensures TypeScript identifies it correctly on the class instance,
+  // fixing errors where 'state' was reported as missing on the type 'ErrorBoundary'.
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null,
+  };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  // static method used by React to update state after an error is thrown in a child component.
+  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  // Lifecycle method called after an error is thrown to log error information.
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  render(): ReactNode {
-    // Fix: Accessing state inherited from React.Component
+  public render(): ReactNode {
+    // Accessing 'hasError' from the state property inherited and defined on the class.
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
@@ -46,7 +46,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               Система столкнулась с непредвиденной ошибкой.
             </p>
             <div className="bg-slate-100 p-3 rounded-lg text-xs font-mono text-slate-600 mb-6 overflow-auto max-h-32 border border-slate-200">
-                {/* Fix: Accessing error property from inherited state */}
+                {/* Accessing error details from state for display in the UI */}
                 {this.state.error?.message || 'Unknown Error'}
             </div>
             <button
@@ -61,7 +61,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
 
-    // Fix: Accessing children from inherited props
+    // Accessing children from props, which is available on this through inheritance from React.Component.
     return this.props.children || null;
   }
 }
