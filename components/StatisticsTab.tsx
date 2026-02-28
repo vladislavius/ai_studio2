@@ -64,6 +64,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
   const [displayMode, setDisplayMode] = useState<'dashboard' | 'list'>('dashboard');
   const [expandedStatId, setExpandedStatId] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [editingStatDef, setEditingStatDef] = useState<Partial<StatisticDefinition> | null>(null);
   const [isValueModalOpen, setIsValueModalOpen] = useState(false);
   const [selectedStatForValues, setSelectedStatForValues] = useState<StatisticDefinition | null>(null);
@@ -79,20 +80,26 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
       statId: string | null;
   }>({ isOpen: false, title: '', message: '', statId: null });
 
-  useEffect(() => { fetchDefinitions(); fetchAllValues(); }, [isOffline]); 
+  useEffect(() => {
+    setIsLoading(true);
+    fetchDefinitions().finally(() => setIsLoading(false));
+    fetchAllValues();
+  }, [isOffline]);
 
   const fetchDefinitions = async () => {
-    if (isOffline) { if (definitions.length === 0) setDefinitions(DEMO_DEFINITIONS); } 
-    else if (supabase) {
-        const { data } = await supabase.from('statistics_definitions').select('*').order('title');
+    if (isOffline) {
+      if (definitions.length === 0) setDefinitions(DEMO_DEFINITIONS);
+    } else if (supabase) {
+        const { data, error } = await supabase.from('statistics_definitions').select('*').order('title');
         if (data) setDefinitions(data);
+        else if (error) console.error('[StatisticsTab] fetchDefinitions error:', error.message);
     }
   };
 
   const fetchAllValues = async () => {
       if (isOffline) { if (Object.keys(allLatestValues).length === 0) setAllLatestValues(DEMO_VALUES); return; }
       if (supabase) {
-          const { data } = await supabase.from('statistics_values').select('*');
+          const { data, error } = await supabase.from('statistics_values').select('*');
           if (data) {
               const grouped: Record<string, StatisticValue[]> = {};
               data.forEach((v: StatisticValue) => {
@@ -100,6 +107,8 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                   grouped[v.definition_id].push(v);
               });
               setAllLatestValues(grouped);
+          } else if (error) {
+              console.error('[StatisticsTab] fetchAllValues error:', error.message);
           }
       }
   };
@@ -301,8 +310,43 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
       );
   };
 
+  const renderSkeletonCard = (key: string) => (
+      <div key={key} className="bg-white rounded-xl shadow-sm border border-slate-200 h-[210px] md:h-[240px] animate-pulse">
+          <div className="p-4 flex flex-col h-full">
+              <div className="h-3 bg-slate-200 rounded w-3/4 mb-2"></div>
+              <div className="h-2 bg-slate-100 rounded w-1/2 mb-4"></div>
+              <div className="h-8 bg-slate-200 rounded w-1/3 mb-4"></div>
+              <div className="flex-1 bg-slate-100 rounded"></div>
+          </div>
+      </div>
+  );
+
   const renderDashboardView = () => {
     if (!selectedDeptId) {
+        if (isLoading) {
+            return (
+                <div className="space-y-12 animate-in fade-in pb-20">
+                    {DEPT_ORDER.slice(1).map(deptId => {
+                        const dept = ORGANIZATION_STRUCTURE[deptId];
+                        if (!dept) return null;
+                        return (
+                            <div key={deptId} className="space-y-4">
+                                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg animate-pulse bg-slate-200"></div>
+                                        <div className="h-4 bg-slate-200 rounded w-32 animate-pulse"></div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                                    {[1, 2, 3].map(i => renderSkeletonCard(`${deptId}-skel-${i}`))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
         return (
             <div className="space-y-12 animate-in fade-in pb-20">
                 {DEPT_ORDER.map(deptId => {
@@ -363,7 +407,9 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                     <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Общие статистики департамента</span>
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {deptMainStats.map(stat => renderStatCard(stat, dept.color, 'dept-main'))}
+                    {isLoading && deptMainStats.length === 0
+                        ? [1, 2, 3].map(i => renderSkeletonCard(`dept-main-skel-${i}`))
+                        : deptMainStats.map(stat => renderStatCard(stat, dept.color, 'dept-main'))}
                     {isEditMode && isAdmin && (
                         <div onClick={() => setEditingStatDef({ owner_id: selectedDeptId, type: 'department', is_favorite: false, title: '', description: '' })} className="border-2 border-dashed border-slate-200 rounded-xl h-[210px] md:h-[240px] flex flex-col items-center justify-center text-slate-300 cursor-pointer hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all">
                             <Plus size={32} /><span className="text-xs font-bold mt-2">Добавить</span>
@@ -374,7 +420,7 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
 
             {subDepts.map(sub => {
                 const subStats = definitions.filter(d => d.owner_id === sub.id);
-                if (subStats.length === 0 && !isEditMode) return null;
+                if (subStats.length === 0 && !isEditMode && !isLoading) return null;
                 return (
                     <div key={sub.id} className="space-y-4 pt-4 border-t border-slate-100">
                         <div className="flex items-center gap-2 px-1">
@@ -382,7 +428,9 @@ const StatisticsTab: React.FC<StatisticsTabProps> = ({ employees, isOffline, sel
                             <span className="text-[11px] font-black text-slate-800 uppercase tracking-tight">{sub.name}</span>
                         </div>
                         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                            {subStats.map(stat => renderStatCard(stat, dept.color, `sub-${sub.id}`))}
+                            {isLoading && subStats.length === 0
+                                ? [1, 2].map(i => renderSkeletonCard(`${sub.id}-skel-${i}`))
+                                : subStats.map(stat => renderStatCard(stat, dept.color, `sub-${sub.id}`))}
                             {isEditMode && isAdmin && (
                                 <div onClick={() => setEditingStatDef({ owner_id: sub.id, type: 'department', is_favorite: false, title: '', description: '' })} className="border-2 border-dashed border-slate-200 rounded-xl h-[210px] md:h-[240px] flex flex-col items-center justify-center text-slate-300 cursor-pointer hover:border-amber-400 hover:text-amber-500 hover:bg-amber-50/50 transition-all">
                                     <Plus size={28} /><span className="text-[10px] font-bold mt-1 uppercase">В отдел {sub.code}</span>
