@@ -116,4 +116,46 @@ export interface StatisticValue {
   notes?: string;
 }
 
-export type ViewMode = 'employees' | 'org_chart' | 'statistics' | 'settings';
+export type ViewMode = 'employees' | 'org_chart' | 'statistics' | 'settings' | 'courses';
+
+// --- Hubbard Study Technology (Course System) ---
+
+export type ChecksheetItemType = 'read' | 'word_clear' | 'demo' | 'clay_demo' | 'drill' | 'essay' | 'exam';
+
+export interface Course {
+  id: string;
+  created_at?: string;
+  title: string;
+  description?: string;
+  objective?: string; // Цель курса (VFP)
+  supervisor_id?: string; // employee_id of course supervisor
+  is_active: boolean;
+}
+
+export interface ChecksheetItem {
+  id: string;
+  course_id: string;
+  order_num: number;
+  type: ChecksheetItemType;
+  content: string;       // Описание шага / ссылка на материал
+  source_ref?: string;   // Источник / страница
+  requires_verification?: boolean; // требует проверки супервайзером
+}
+
+export interface CourseEnrollment {
+  id: string;
+  course_id: string;
+  employee_id: string;
+  enrolled_at: string;
+  completed_at?: string;
+  status: 'active' | 'completed' | 'paused';
+}
+
+export interface ChecksheetCompletion {
+  id: string;
+  enrollment_id: string;
+  item_id: string;
+  completed_at: string;
+  verified_by?: string; // supervisor employee_id
+  notes?: string;
+}
