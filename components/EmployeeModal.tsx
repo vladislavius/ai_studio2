@@ -199,11 +199,14 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, isReadOnly = fals
       
       let foundData = false;
       if (supabase) {
-          const { data: defs } = await supabase.from('statistics_definitions').select('*').eq('owner_id', empId);
-          if (defs && defs.length > 0) {
+          const { data: defs, error: defsError } = await supabase.from('statistics_definitions').select('*').eq('owner_id', empId);
+          if (defsError) {
+              console.error('[EmployeeModal] fetchPersonalStats defs error:', defsError.message);
+          } else if (defs && defs.length > 0) {
               setStatsDefinitions(defs);
               const ids = defs.map(d => d.id);
-              const { data: vals } = await supabase.from('statistics_values').select('*').in('definition_id', ids).order('date', { ascending: true });
+              const { data: vals, error: valsError } = await supabase.from('statistics_values').select('*').in('definition_id', ids).order('date', { ascending: true });
+              if (valsError) console.error('[EmployeeModal] fetchPersonalStats vals error:', valsError.message);
               setStatsValues(vals || []);
               foundData = true;
           } else {

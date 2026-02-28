@@ -25,34 +25,57 @@ const StatisticsEngineering: React.FC = () => {
 
   const fetchDefinitions = async () => {
     setLoading(true);
-    if (!supabase) return;
-    const { data } = await supabase.from('statistics_definitions').select('*').order('title');
-    if (data) setDefinitions(data);
-    setLoading(false);
+    try {
+        if (!supabase) return;
+        const { data, error } = await supabase.from('statistics_definitions').select('*').order('title');
+        if (error) console.error('[StatisticsEngineering] fetchDefinitions error:', error.message);
+        else if (data) setDefinitions(data);
+    } catch (err) {
+        console.error('[StatisticsEngineering] fetchDefinitions crash:', err);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const fetchValues = async (statId: string) => {
     if (!supabase) return;
-    const { data } = await supabase.from('statistics_values').select('*').eq('definition_id', statId).order('date', { ascending: false });
-    if (data) setStatValues(data);
+    try {
+        const { data, error } = await supabase.from('statistics_values').select('*').eq('definition_id', statId).order('date', { ascending: false });
+        if (error) console.error('[StatisticsEngineering] fetchValues error:', error.message);
+        else if (data) setStatValues(data);
+    } catch (err) {
+        console.error('[StatisticsEngineering] fetchValues crash:', err);
+    }
   };
 
   // --- DEFINITION CRUD ---
   const handleSaveDef = async () => {
     if (!editingDef || !supabase) return;
-    if (!editingDef.title || !editingDef.owner_id) { alert("Title and Owner are required"); return; }
-    if (editingDef.id) { await supabase.from('statistics_definitions').update(editingDef).eq('id', editingDef.id); } 
-    else { await supabase.from('statistics_definitions').insert([editingDef]); }
-    setEditingDef(null);
-    fetchDefinitions();
+    if (!editingDef.title || !editingDef.owner_id) { alert("Название и Владелец обязательны"); return; }
+    try {
+        const { error } = editingDef.id
+            ? await supabase.from('statistics_definitions').update(editingDef).eq('id', editingDef.id)
+            : await supabase.from('statistics_definitions').insert([editingDef]);
+        if (error) { console.error('[StatisticsEngineering] handleSaveDef error:', error.message); return; }
+        setEditingDef(null);
+        fetchDefinitions();
+    } catch (err) {
+        console.error('[StatisticsEngineering] handleSaveDef crash:', err);
+    }
   };
 
   const handleDeleteDef = async (id: string) => {
       if(!confirm("УДАЛЕНИЕ СТАТИСТИКИ\n\nВы уверены? Это удалит саму статистику и ВСЕ её исторические значения безвозвратно.")) return;
       if (!supabase) return;
-      await supabase.from('statistics_values').delete().eq('definition_id', id);
-      await supabase.from('statistics_definitions').delete().eq('id', id);
-      fetchDefinitions();
+      try {
+          const { error: errVals } = await supabase.from('statistics_values').delete().eq('definition_id', id);
+          if (errVals) console.error('[StatisticsEngineering] delete values error:', errVals.message);
+          const { error: errDef } = await supabase.from('statistics_definitions').delete().eq('id', id);
+          if (errDef) { console.error('[StatisticsEngineering] delete definition error:', errDef.message); return; }
+          fetchDefinitions();
+      } catch (err) {
+          console.error('[StatisticsEngineering] handleDeleteDef crash:', err);
+      }
   };
 
   // --- VALUE CRUD ---
@@ -64,17 +87,28 @@ const StatisticsEngineering: React.FC = () => {
 
   const handleSaveValue = async () => {
       if (!editingValue || !supabase) return;
-      if (editingValue.id) { await supabase.from('statistics_values').update({ value: editingValue.value, date: editingValue.date }).eq('id', editingValue.id); } 
-      else { await supabase.from('statistics_values').insert([{ definition_id: selectedStatForValues?.id, date: editingValue.date, value: editingValue.value }]); }
-      if (selectedStatForValues) fetchValues(selectedStatForValues.id);
-      setEditingValue({ definition_id: selectedStatForValues?.id, date: new Date().toISOString().split('T')[0], value: 0 });
+      try {
+          const { error } = editingValue.id
+              ? await supabase.from('statistics_values').update({ value: editingValue.value, date: editingValue.date }).eq('id', editingValue.id)
+              : await supabase.from('statistics_values').insert([{ definition_id: selectedStatForValues?.id, date: editingValue.date, value: editingValue.value }]);
+          if (error) { console.error('[StatisticsEngineering] handleSaveValue error:', error.message); return; }
+          if (selectedStatForValues) fetchValues(selectedStatForValues.id);
+          setEditingValue({ definition_id: selectedStatForValues?.id, date: new Date().toISOString().split('T')[0], value: 0 });
+      } catch (err) {
+          console.error('[StatisticsEngineering] handleSaveValue crash:', err);
+      }
   };
 
   const handleDeleteValue = async (id: string) => {
       if (!confirm("Удалить это значение?")) return;
       if (!supabase) return;
-      await supabase.from('statistics_values').delete().eq('id', id);
-      if (selectedStatForValues) fetchValues(selectedStatForValues.id);
+      try {
+          const { error } = await supabase.from('statistics_values').delete().eq('id', id);
+          if (error) { console.error('[StatisticsEngineering] handleDeleteValue error:', error.message); return; }
+          if (selectedStatForValues) fetchValues(selectedStatForValues.id);
+      } catch (err) {
+          console.error('[StatisticsEngineering] handleDeleteValue crash:', err);
+      }
   };
 
   const filteredDefs = definitions.filter(d => d.title.toLowerCase().includes(searchTerm.toLowerCase()));
