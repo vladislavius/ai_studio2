@@ -173,6 +173,7 @@ function App() {
       setSession({ user: { email: ADMIN_EMAILS[0] } });
       setEmployees(DEMO_EMPLOYEES);
       setAuthChecking(false);
+      setCurrentView('chat');
   };
 
   const fetchEmployees = async () => {
