@@ -139,6 +139,25 @@
   .zrscard .acts .a-no{color:#be123c}.zrscard .acts .a-no:hover{background:var(--bad-soft)}
   .zrscard .meta-foot{padding:9px 15px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
   .openlink{color:var(--brand);font-weight:700;text-decoration:none;cursor:pointer}
+  /* печать-резолюция */
+  .zrscard{position:relative}
+  .stamp{position:absolute;top:46px;right:14px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 14px;border:3px double currentColor;border-radius:10px;transform:rotate(-13deg);opacity:.92;pointer-events:none;font-weight:900;letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,.55)}
+  .stamp .big{font-size:16px;line-height:1}
+  .stamp .sig{font-size:8px;font-weight:800;letter-spacing:.3px;text-transform:none;opacity:.9}
+  .stamp.ap{color:#15803d}
+  .stamp.re{color:#be123c}
+  .stamp.fw{color:#b45309;border-style:dashed}
+  .sealrow{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:11px;font-size:12px;font-weight:700}
+  .sealrow.ap{background:var(--ok-soft);color:#15803d}
+  .sealrow.re{background:var(--bad-soft);color:#be123c}
+  .sealrow.fw{background:var(--warn-soft);color:#b45309}
+  .sealrow .sub{font-weight:600;opacity:.8;font-size:11px}
+  .share{display:flex;gap:8px;padding:11px 15px;border-top:1px dashed var(--line)}
+  .share button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px;font-size:12px;font-weight:800;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .share button:hover{border-color:var(--brand-ring);color:var(--brand)}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:13px;font-weight:700;padding:11px 18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.25);z-index:80;opacity:0;transition:.2s}
+  .toast.show{opacity:1}
+  .fwd-note{font-size:10.5px;color:var(--muted);padding:0 15px 2px;display:flex;align-items:center;gap:5px}
 
   /* composer */
   .composer{border-top:1px solid var(--line);padding:12px 14px;background:var(--panel)}
@@ -422,7 +441,7 @@ function renderThread(){
   const feed=document.getElementById('feed');
   feed.innerHTML = r.msgs.map(m=>{
     if(m.k==='sys') return `<div class="sys">${esc(m.body)}</div>`;
-    if(m.k==='zrs') return zrsCard(m.zid, m.from===meId, m.t);
+    if(m.k==='zrs') return zrsCard(m.zid, m.from===meId, m.t, {fwdBy:m.fwd?m.fwdBy:null, readonly:m.fwd});
     const mine = m.from===meId;
     return `<div class="msg ${mine?'me':'them'}">
       ${mine?'':av(m.from,true)}
@@ -433,20 +452,33 @@ function renderThread(){
 }
 
 // ── карточка ЗРС в ленте ──
-function zrsCard(zid, mine, t){
+function zrsCard(zid, mine, t, opts){
+  opts=opts||{};
   const z=zrs[zid], tp=TPL[z.tpl], st=STATUS[z.status];
-  const canDecide = viewAs==='mgr' && z.approver===viewAs && z.status==='submitted';
-  return `<div class="zrscard s-${z.status} ${mine?'':''}" style="${mine?'align-self:flex-end':'align-self:flex-start'}">
+  const decided = z.status==='approved' || z.status==='rejected';
+  const canDecide = !opts.readonly && viewAs==='mgr' && z.approver===viewAs && z.status==='submitted';
+  // печать видна только на решённых
+  const stampMap={approved:['ap','ОДОБРЕНО'],rejected:['re','ОТКЛОНЕНО']};
+  const sealMap ={approved:['ap','✓ Одобрено'],rejected:['re','✕ Отклонено']};
+  const stamp = decided ? `<div class="stamp ${stampMap[z.status][0]}">
+      <span class="big">${stampMap[z.status][1]}</span>
+      <span class="sig">${z.decidedBy||PEOPLE[z.approver].name} · ${z.decidedAt||t}</span></div>` : '';
+  // строка-резолюция внутри тела (читается, даже если печать перекрыта)
+  const seal = decided ? `<div class="sealrow ${sealMap[z.status][0]}">
+      <span>${sealMap[z.status][1]} · ${z.decidedBy||PEOPLE[z.approver].name}, ${z.decidedAt||t}</span>
+      ${z.comment?`<span class="sub">«${esc(z.comment)}»</span>`:''}</div>` : '';
+  return `<div class="zrscard s-${z.status}" style="${mine?'align-self:flex-end':'align-self:flex-start'}">
+    ${opts.fwdBy?`<div class="fwd-note">↪ переслано: ${esc(opts.fwdBy)}</div>`:''}
     <div class="ch ${tp.tone}">${tp.emoji} ЗРС · ${tp.label}<span class="id">#${zid.replace('z','')}</span></div>
+    ${stamp}
     <div class="bd">
       <div class="fld"><div class="l">Ситуация</div><div class="v">${esc(z.situation)}</div></div>
       ${z.data?`<div class="fld"><div class="l">Данные</div><div class="v">${esc(z.data)}</div></div>`:''}
       <div class="fld sol"><div class="l">Решение</div><div class="v">${esc(z.solution)}</div></div>
-      ${z.comment?`<div class="note"><div class="l" style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase">Комментарий решения</div><div class="v">«${esc(z.comment)}»</div></div>`:''}
-      <div class="statusrow">
+      ${decided ? seal : `<div class="statusrow">
         <span class="status ${st.cls}">${st.label}</span>
         <span style="font-size:11px;color:var(--muted)">кому: ${PEOPLE[z.approver].name}</span>
-      </div>
+      </div>`}
     </div>
     ${canDecide?`<div class="acts">
       <button class="a-ok"  onclick="decide('${zid}','approved')">✓ Одобрить</button>
@@ -454,8 +486,66 @@ function zrsCard(zid, mine, t){
       <button class="a-fwd" onclick="openForward('${zid}')">↪ Переслать</button>
       <button class="a-no"  onclick="decide('${zid}','rejected')">✕ Отклонить</button>
     </div>`:''}
+    ${decided && !opts.readonly ? `<div class="share">
+      <button onclick="copyZRS('${zid}')">⧉ Копировать</button>
+      <button onclick="openShare('${zid}')">↪ Переслать с резолюцией</button>
+    </div>`:''}
     <div class="meta-foot"><span>${t}</span><span class="openlink" onclick="alert('В реальном портале: переход на /me/zrs/${zid} с полной историей согласования (zrs_approval_history).')">Открыть карточку →</span></div>
   </div>`;
+}
+
+// ── копирование / пересылка с резолюцией ──
+function zrsAsText(zid){
+  const z=zrs[zid], tp=TPL[z.tpl], st=STATUS[z.status];
+  const lines=[
+    `ЗРС #${zid.replace('z','')} · ${tp.label}`,
+    `От: ${PEOPLE[z.writer].name}`,
+    `Кому: ${PEOPLE[z.approver].name}`,
+    ``,
+    `СИТУАЦИЯ: ${z.situation}`,
+    z.data?`ДАННЫЕ: ${z.data}`:null,
+    `РЕШЕНИЕ: ${z.solution}`,
+    ``,
+    `РЕЗОЛЮЦИЯ: ${st.label.toUpperCase()}${z.decidedBy?` — ${z.decidedBy}, ${z.decidedAt}`:''}`,
+    z.comment?`КОММЕНТАРИЙ: «${z.comment}»`:null,
+  ].filter(Boolean);
+  return lines.join('\n');
+}
+function copyZRS(zid){
+  const text=zrsAsText(zid);
+  const done=()=>toast('Скопировано с резолюцией');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
+  } else fallbackCopy(text,done);
+}
+function fallbackCopy(text,done){
+  const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done();}catch(e){alert(text);}finally{ta.remove();}
+}
+function openShare(zid){ openModalNode(shareModal(zid)); }
+function applyShare(zid, targetId){
+  let rid = ROOM_ORDER.find(r=>rooms[r].with===targetId);
+  if(!rid){ rid='r'+(ROOM_ORDER.length+1); rooms[rid]={id:rid,with:targetId,msgs:[]}; ROOM_ORDER.push(rid); }
+  rooms[rid].msgs.push({k:'zrs', from:viewAs, zid, t:now(), fwd:true, fwdBy:PEOPLE[viewAs].name});
+  rooms[rid].msgs.push({k:'sys', body:`↪ ${PEOPLE[viewAs].name} переслал(а) ЗРС #${zid.replace('z','')} с резолюцией`, t:now()});
+  activeRoom=rid; closeModal(); renderRooms(); renderThread();
+  toast(`Переслано: ${PEOPLE[targetId].name}`);
+}
+function shareModal(zid){
+  const z=zrs[zid];
+  const list=Object.keys(PEOPLE).filter(id=>id!==viewAs).map(id=>{const p=PEOPLE[id];
+    return `<li onclick="applyShare('${zid}','${id}')">${av(id,true)}
+      <div><b style="font-size:13px">${p.name}</b><div class="pos">${p.pos}</div></div></li>`;}).join('');
+  const node=document.createElement('div');
+  node.innerHTML=modalShell('Переслать с резолюцией',`ЗРС #${zid.replace('z','')} · ${STATUS[z.status].label} — карточка уйдёт получателю вместе с печатью и комментарием`,
+    `<div class="picker"><ul>${list}</ul></div>`);
+  return node;
+}
+function toast(msg){
+  let el=document.getElementById('toast');
+  if(!el){el=document.createElement('div');el.id='toast';el.className='toast';document.body.appendChild(el);}
+  el.textContent=msg;el.classList.add('show');clearTimeout(window.__tt);
+  window.__tt=setTimeout(()=>el.classList.remove('show'),1800);
 }
 
 // ── отправка текста ──
@@ -474,6 +564,7 @@ function decide(zid, decision){
 }
 function applyDecision(zid, decision, comment){
   const z=zrs[zid]; z.status=decision; z.comment=comment||null;
+  z.decidedBy=PEOPLE[viewAs].name; z.decidedAt=now();
   const who=PEOPLE[viewAs].name;
   const txt = decision==='approved' ? `✅ ${who} одобрил(а) ЗРС` : `❌ ${who} отклонил(а) ЗРС`;
   rooms[activeRoom].msgs.push({k:'sys',body:comment?`${txt}: «${comment}»`:txt,t:now()});
