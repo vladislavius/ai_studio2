@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Прототип · ЗРС в чате · Остров Сокровищ</title>
+<style>
+  :root{
+    --bg:#faf6f0; --panel:#ffffff; --panel-2:#fbf8f3; --ink:#1f2430; --ink-soft:#5b6472;
+    --muted:#9aa3b2; --line:#efe7db; --line-2:#eee3d4;
+    --brand:#ea580c; --brand-2:#f59e0b; --brand-soft:#fff3e6; --brand-ring:#fde3c7;
+    --ok:#16a34a; --ok-soft:#e9f7ee; --warn:#d97706; --warn-soft:#fdf3e2;
+    --bad:#e11d48; --bad-soft:#fdeaee; --info:#2563eb; --info-soft:#e9f0fe;
+    --shadow:0 1px 2px rgba(31,36,48,.04),0 8px 24px rgba(31,36,48,.06);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{display:grid;grid-template-columns:248px 1fr;height:100vh}
+
+  /* ───── sidebar ───── */
+  .side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .brand{display:flex;align-items:center;gap:10px;padding:16px 16px 14px}
+  .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--brand-2),var(--brand));display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px;box-shadow:0 6px 16px rgba(234,88,12,.28)}
+  .brand b{font-size:15px;letter-spacing:.2px}
+  .brand .tag{font-size:9px;font-weight:800;color:var(--brand);background:var(--brand-soft);padding:2px 6px;border-radius:6px;letter-spacing:.5px}
+  .nav{padding:6px 10px;overflow:auto;flex:1;min-height:0}
+  .nav .grp{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.8px;padding:14px 10px 6px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:11px;color:var(--ink-soft);text-decoration:none;font-size:13.5px;font-weight:600;cursor:pointer;position:relative}
+  .nav a:hover{background:var(--panel-2)}
+  .nav a.active{background:var(--brand-soft);color:var(--brand)}
+  .nav a .ic{width:18px;height:18px;flex:0 0 18px;opacity:.85}
+  .nav a .badge{margin-left:auto;background:var(--bad);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center;padding:0 5px}
+  .nav a .chip{margin-left:auto;background:var(--brand-soft);color:var(--brand);font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px}
+  .side .foot{border-top:1px solid var(--line);padding:12px;font-size:11px;color:var(--muted)}
+
+  /* ───── main ───── */
+  .main{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .topbar{height:60px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:14px;padding:0 18px;flex:0 0 60px}
+  .search{flex:1;max-width:420px;position:relative}
+  .search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);background:var(--panel-2);border-radius:11px;font-size:13px;outline:none}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .topbar .me{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .topbar .me .txt{text-align:right}
+  .topbar .me .txt b{font-size:12px;display:block}
+  .topbar .me .txt span{font-size:10px;color:var(--muted)}
+
+  /* viewas toggle */
+  .viewas{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:4px}
+  .viewas .lab{font-size:10px;font-weight:800;color:var(--muted);padding:0 4px 0 8px;letter-spacing:.4px}
+  .viewas button{border:0;background:transparent;font-weight:700;font-size:12px;color:var(--ink-soft);padding:6px 12px;border-radius:9px;cursor:pointer}
+  .viewas button.on{background:#fff;color:var(--brand);box-shadow:var(--shadow)}
+
+  /* ───── chat layout ───── */
+  .chat{flex:1;display:grid;grid-template-columns:320px 1fr;min-height:0;background:var(--panel);margin:14px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .rooms{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--panel-2)}
+  .rooms .hd{padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between}
+  .rooms .hd h2{margin:0;font-size:17px}
+  .rooms .hd .sub{font-size:11px;color:var(--muted)}
+  .btn-zrs{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;border:0;font-weight:800;font-size:12px;padding:9px 13px;border-radius:11px;cursor:pointer;box-shadow:0 6px 16px rgba(234,88,12,.25)}
+  .btn-zrs:hover{filter:brightness(1.03)}
+  .tabs{display:flex;gap:6px;padding:0 12px 8px}
+  .tabs button{flex:1;border:0;background:transparent;font-weight:700;font-size:12px;color:var(--muted);padding:8px;border-radius:10px;cursor:pointer}
+  .tabs button.on{background:var(--brand-soft);color:var(--brand)}
+  .roomsearch{padding:0 12px 8px;position:relative}
+  .roomsearch input{width:100%;padding:8px 10px 8px 30px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:12.5px;outline:none}
+  .roomsearch svg{position:absolute;left:21px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .roomlist{overflow:auto;flex:1;min-height:0}
+  .room{display:flex;gap:11px;align-items:center;padding:11px 13px;cursor:pointer;border-left:3px solid transparent}
+  .room:hover{background:#fff}
+  .room.on{background:#fff;border-left-color:var(--brand)}
+  .room .nm{flex:1;min-width:0}
+  .room .nm .t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .room .nm .t b{font-size:13.5px}
+  .room .nm .t span{font-size:10px;color:var(--muted)}
+  .room .nm .p{font-size:12px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;margin-top:2px}
+  .room .unread{background:var(--brand);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center;padding:0 5px}
+
+  .avatar{width:40px;height:40px;border-radius:50%;flex:0 0 40px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;object-fit:cover}
+  .avatar.sm{width:30px;height:30px;flex-basis:30px;font-size:11px}
+
+  /* thread */
+  .thread{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .thread .hd{height:62px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 18px;flex:0 0 62px}
+  .thread .hd .nm b{font-size:14.5px;display:block}
+  .thread .hd .nm span{font-size:11px;color:var(--muted)}
+  .thread .hd .ai{margin-left:auto;display:flex;gap:8px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:7px 11px;font-size:12px;font-weight:700;color:var(--ink-soft);cursor:pointer}
+  .feed{flex:1;overflow:auto;padding:22px 22px 8px;background:linear-gradient(180deg,#fbf7f1,#ffffff);display:flex;flex-direction:column;gap:12px}
+  .msg{display:flex;gap:8px;max-width:78%}
+  .msg.me{align-self:flex-end;flex-direction:row-reverse}
+  .bubble{padding:9px 13px;border-radius:18px;font-size:14px;line-height:1.45;box-shadow:var(--shadow);position:relative}
+  .msg.me .bubble{background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;border-bottom-right-radius:7px}
+  .msg.them .bubble{background:#fff;border:1px solid var(--line);border-bottom-left-radius:7px}
+  .bubble .who{font-size:11px;font-weight:800;color:var(--brand);margin-bottom:2px}
+  .bubble .tm{font-size:10px;opacity:.7;float:right;margin:6px 0 0 12px}
+  .sys{align-self:center;background:var(--panel-2);border:1px solid var(--line);color:var(--ink-soft);font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:999px}
+
+  /* ZRS card in chat */
+  .zrscard{align-self:flex-start;max-width:430px;width:100%;background:#fff;border:2px solid var(--info);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+  .msg.me .zrscard{align-self:flex-end}
+  .zrscard.s-submitted{border-color:#bcd0fb}
+  .zrscard.s-approved{border-color:#a7e3bd}
+  .zrscard.s-rejected{border-color:#f4b8c4}
+  .zrscard.s-forwarded{border-color:#fad9a6}
+  .zrscard .ch{display:flex;align-items:center;gap:8px;padding:10px 14px;font-weight:800;font-size:12px;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--line)}
+  .tone-vacation{background:var(--ok-soft);color:#15803d}
+  .tone-dayoff{background:var(--info-soft);color:#1d4ed8}
+  .tone-absence{background:#eef0fb;color:#4338ca}
+  .tone-advance{background:var(--warn-soft);color:#b45309}
+  .tone-initiative{background:#fbeefb;color:#a21caf}
+  .tone-purchase{background:#fdeee2;color:#c2410c}
+  .tone-other{background:var(--panel-2);color:var(--ink-soft)}
+  .zrscard .ch .id{margin-left:auto;font-family:ui-monospace,monospace;font-size:10px;opacity:.6;text-transform:none}
+  .zrscard .bd{padding:13px 15px;display:flex;flex-direction:column;gap:11px}
+  .zrscard .fld .l{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+  .zrscard .fld .v{font-size:13.5px;color:var(--ink);line-height:1.45}
+  .zrscard .fld.sol .v{font-weight:600}
+  .note{background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:8px 11px}
+  .note .v{font-style:italic;color:var(--ink-soft)}
+  .statusrow{display:flex;align-items:center;justify-content:space-between;padding-top:2px}
+  .status{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:999px;border:1px solid transparent}
+  .st-submitted{background:var(--info-soft);color:#1d4ed8}
+  .st-approved{background:var(--ok-soft);color:#15803d}
+  .st-rejected{background:var(--bad-soft);color:#be123c}
+  .st-forwarded{background:var(--warn-soft);color:#b45309}
+  .st-draft{background:var(--panel-2);color:var(--ink-soft)}
+  .zrscard .acts{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+  .zrscard .acts button{border:0;background:#fff;padding:11px 4px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;border-right:1px solid var(--line)}
+  .zrscard .acts button:last-child{border-right:0}
+  .zrscard .acts .a-ok{color:#15803d}.zrscard .acts .a-ok:hover{background:var(--ok-soft)}
+  .zrscard .acts .a-ask{color:#b45309}.zrscard .acts .a-ask:hover{background:var(--warn-soft)}
+  .zrscard .acts .a-fwd{color:#1d4ed8}.zrscard .acts .a-fwd:hover{background:var(--info-soft)}
+  .zrscard .acts .a-no{color:#be123c}.zrscard .acts .a-no:hover{background:var(--bad-soft)}
+  .zrscard .meta-foot{padding:9px 15px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+  .openlink{color:var(--brand);font-weight:700;text-decoration:none;cursor:pointer}
+  /* печать-резолюция */
+  .zrscard{position:relative}
+  .stamp{position:absolute;top:46px;right:14px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 14px;border:3px double currentColor;border-radius:10px;transform:rotate(-13deg);opacity:.92;pointer-events:none;font-weight:900;letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,.55)}
+  .stamp .big{font-size:16px;line-height:1}
+  .stamp .sig{font-size:8px;font-weight:800;letter-spacing:.3px;text-transform:none;opacity:.9}
+  .stamp.ap{color:#15803d}
+  .stamp.re{color:#be123c}
+  .stamp.fw{color:#b45309;border-style:dashed}
+  .sealrow{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:11px;font-size:12px;font-weight:700}
+  .sealrow.ap{background:var(--ok-soft);color:#15803d}
+  .sealrow.re{background:var(--bad-soft);color:#be123c}
+  .sealrow.fw{background:var(--warn-soft);color:#b45309}
+  .sealrow .sub{font-weight:600;opacity:.8;font-size:11px}
+  .share{display:flex;gap:8px;padding:11px 15px;border-top:1px dashed var(--line)}
+  .share button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px;font-size:12px;font-weight:800;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .share button:hover{border-color:var(--brand-ring);color:var(--brand)}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:13px;font-weight:700;padding:11px 18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.25);z-index:80;opacity:0;transition:.2s}
+  .toast.show{opacity:1}
+  .fwd-note{font-size:10.5px;color:var(--muted);padding:0 15px 2px;display:flex;align-items:center;gap:5px}
+
+  /* composer */
+  .composer{border-top:1px solid var(--line);padding:12px 14px;background:var(--panel)}
+  .composer .box{display:flex;align-items:flex-end;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:16px;padding:7px 8px}
+  .composer .box:focus-within{border-color:var(--brand-ring)}
+  .iconbtn{width:38px;height:38px;border:0;background:transparent;border-radius:11px;color:var(--ink-soft);cursor:pointer;display:grid;place-items:center;flex:0 0 38px}
+  .iconbtn:hover{background:#fff;color:var(--brand)}
+  .composer textarea{flex:1;border:0;background:transparent;resize:none;outline:none;font:inherit;font-size:14px;padding:9px 4px;max-height:120px}
+  .send{width:38px;height:38px;border:0;border-radius:11px;background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;cursor:pointer;display:grid;place-items:center;flex:0 0 38px}
+  .send:disabled{background:var(--line);color:var(--muted);cursor:default}
+  .hint{text-align:center;font-size:10.5px;color:var(--muted);margin-top:7px}
+  .hint b{color:var(--ink-soft)}
+
+  /* ───── modal ───── */
+  .scrim{position:fixed;inset:0;background:rgba(31,36,48,.32);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+  .scrim.show{display:flex}
+  .modal{background:#fff;border-radius:22px;width:100%;max-width:560px;max-height:92vh;overflow:auto;box-shadow:0 24px 60px rgba(31,36,48,.28);animation:pop .16s ease}
+  @keyframes pop{from{transform:scale(.97);opacity:.4}to{transform:scale(1);opacity:1}}
+  .modal .mh{padding:20px 22px 6px;display:flex;align-items:flex-start;justify-content:space-between}
+  .modal .mh h3{margin:0;font-size:19px}
+  .modal .mh .s{font-size:12px;color:var(--muted);margin-top:3px}
+  .modal .x{border:0;background:var(--panel-2);width:34px;height:34px;border-radius:10px;cursor:pointer;color:var(--ink-soft);font-size:18px}
+  .modal .mb{padding:10px 22px 22px}
+  .grid7{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+  .tcard{border:2px solid var(--line);border-radius:15px;padding:15px;cursor:pointer;text-align:left;background:#fff;transition:.12s}
+  .tcard:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .tcard .ti{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;margin-bottom:9px;font-size:18px}
+  .tcard b{font-size:14px}
+  .field{margin-bottom:15px}
+  .field>label{display:block;font-size:12px;font-weight:800;color:var(--ink-soft);margin-bottom:6px}
+  .field .req{color:var(--bad)}
+  .field textarea,.field input{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;outline:none;resize:vertical}
+  .field textarea:focus,.field input:focus{border-color:var(--brand-ring)}
+  .seltype{display:flex;align-items:center;gap:11px;border:2px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:18px}
+  .seltype .ti{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:17px}
+  .seltype b{font-size:15px}
+  .seltype .chg{margin-left:auto;font-size:12px;font-weight:800;color:var(--brand);background:none;border:0;cursor:pointer}
+
+  /* approver picker */
+  .approver{border:1px solid var(--line);border-radius:14px;padding:11px 13px;display:flex;align-items:center;gap:11px;background:var(--panel-2)}
+  .approver .by{margin-left:auto;font-size:10px;font-weight:800;color:#15803d;background:var(--ok-soft);padding:3px 8px;border-radius:7px}
+  .approver .chg{font-size:12px;font-weight:800;color:var(--brand);background:none;border:0;cursor:pointer;margin-left:8px}
+  .picker{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:8px}
+  .picker .ps{position:relative;border-bottom:1px solid var(--line)}
+  .picker .ps input{width:100%;border:0;padding:11px 12px 11px 34px;outline:none;font:inherit;font-size:13.5px}
+  .picker .ps svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .picker ul{list-style:none;margin:0;padding:6px;max-height:220px;overflow:auto}
+  .picker li{display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:10px;cursor:pointer}
+  .picker li:hover,.picker li.act{background:var(--brand-soft)}
+  .picker li .rec{margin-left:auto;font-size:9px;font-weight:800;color:#15803d;background:var(--ok-soft);padding:2px 6px;border-radius:6px}
+  .picker li .pos{font-size:11.5px;color:var(--muted)}
+
+  .mfoot{display:flex;gap:11px;margin-top:18px}
+  .mfoot .ghost{border:1px solid var(--line);background:#fff;color:var(--ink-soft);font-weight:800;font-size:13.5px;border-radius:13px;padding:12px 16px;cursor:pointer}
+  .mfoot .primary{flex:1;border:0;background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;font-weight:800;font-size:13.5px;border-radius:13px;padding:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .mfoot .primary:disabled{background:var(--line);color:var(--muted);cursor:default}
+  .mfoot .danger{flex:1;border:0;background:linear-gradient(135deg,#fb7185,#e11d48);color:#fff;font-weight:800;border-radius:13px;padding:12px;cursor:pointer}
+  .mfoot .okbtn{flex:1;border:0;background:linear-gradient(135deg,#34d399,#16a34a);color:#fff;font-weight:800;border-radius:13px;padding:12px;cursor:pointer}
+  .infohint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+
+  .empty{flex:1;display:grid;place-items:center;color:var(--muted);font-size:13px}
+  .banner{margin:14px 14px 0;background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid var(--line-2);border-radius:14px;padding:11px 14px;font-size:12px;color:var(--ink-soft);display:flex;gap:10px;align-items:flex-start}
+  .banner b{color:var(--brand)}
+  @media(max-width:920px){.app{grid-template-columns:1fr}.side{display:none}.chat{grid-template-columns:1fr}.rooms{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- sidebar -->
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">О</div>
+      <div><b>Остров Сокровищ</b><div style="margin-top:2px"><span class="tag">ПРОТОТИП</span></div></div>
+    </div>
+    <nav class="nav">
+      <div class="grp">НАЙМ И АДАПТАЦИЯ</div>
+      <a>👥 Сотрудники</a>
+      <a>🗺️ Оргсхема</a>
+      <div class="grp">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+      <a>✅ Задачи</a>
+      <a>🎓 Академия</a>
+      <div class="grp">КОММУНИКАЦИИ</div>
+      <a class="active">💬 Чат <span class="chip">ЗРС</span></a>
+      <a>📁 Файлы</a>
+      <div class="grp">СТАТИСТИКИ</div>
+      <a>📈 Дашборд ОС</a>
+    </nav>
+    <div class="foot">Демо ЗРС-в-чате · данные в памяти</div>
+  </aside>
+
+  <!-- main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Поиск по имени или должности…" />
+      </div>
+      <div class="viewas">
+        <span class="lab">СМОТРЕТЬ КАК</span>
+        <button id="va-emp" class="on" onclick="setViewAs('me')">Алёна · сотрудник</button>
+        <button id="va-mgr" onclick="setViewAs('mgr')">Максим · руководитель</button>
+      </div>
+      <div class="me">
+        <div class="txt"><b id="me-name">Цветкова Алёна</b><span>Текущая сессия</span></div>
+        <div class="avatar sm" id="me-av" style="background:linear-gradient(135deg,#f472b6,#db2777)">ЦА</div>
+      </div>
+    </div>
+
+    <div class="chat">
+      <!-- rooms -->
+      <div class="rooms">
+        <div class="hd">
+          <div><h2>Чат</h2><div class="sub">Коммуникационный центр</div></div>
+          <button class="btn-zrs" onclick="openTypePicker()">＋ ЗРС</button>
+        </div>
+        <div class="tabs">
+          <button class="on">Чаты</button>
+          <button>Каналы</button>
+        </div>
+        <div class="roomsearch">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input placeholder="Поиск по переписке…" />
+        </div>
+        <div class="roomlist" id="roomlist"></div>
+      </div>
+
+      <!-- thread -->
+      <div class="thread">
+        <div class="hd" id="threadhd"></div>
+        <div class="banner" id="banner">
+          <span>💡</span>
+          <div id="bannertext"></div>
+        </div>
+        <div class="feed" id="feed"></div>
+        <div class="composer">
+          <div class="box">
+            <button class="iconbtn" title="Отправить ЗРС" onclick="openTypePicker()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="iconbtn" title="Прикрепить">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.4 11.05-9.19 9.2a5 5 0 0 1-7.07-7.08l8.49-8.48a3 3 0 0 1 4.24 4.24l-8.49 8.49a1 1 0 0 1-1.41-1.42l7.78-7.77"/></svg>
+            </button>
+            <textarea id="composer" rows="1" placeholder="Сообщение…" oninput="autoGrow(this)" onkeydown="composerKey(event)"></textarea>
+            <button class="send" id="sendbtn" onclick="sendText()" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            </button>
+          </div>
+          <div class="hint"><b>Enter</b> — отправить · <b>Shift+Enter</b> — новая строка · <b>＋</b> — отправить ЗРС в этот диалог</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- modal host -->
+<div class="scrim" id="scrim" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   Прототип: ЗРС как сообщение-карточка внутри чата.
+   Соответствует реальной модели clon_ai_studio2:
+     zrs_requests(template_type, situation, data_text, solution_text,
+       status: draft|submitted|approved|rejected, current_approver_id,
+       final_decision_by, final_decision_comment)
+     RPC: zrs_submit / zrs_decide / zrs_forward
+     chat: chat_get_or_create_direct(manager) → direct room
+   Здесь всё в памяти, без БД.
+   ───────────────────────────────────────────────────────────── */
+
+// ── люди (оргсхема) ──
+const PEOPLE = {
+  me:  { id:'me',  name:'Цветкова Алёна', pos:'Руководитель персонала', av:'ЦА', c:'#f472b6,#db2777' },
+  mgr: { id:'mgr', name:'Куртов Максим',  pos:'Владелец', av:'КМ', c:'#fbbf24,#ea580c', rec:true },
+  hr:  { id:'hr',  name:'Власова Ирина',  pos:'HR-менеджер', av:'ВИ', c:'#67e8f9,#0891b2' },
+  fin: { id:'fin', name:'Панкратова Татьяна', pos:'Финансовый директор', av:'ПТ', c:'#a5b4fc,#4f46e5' },
+  vld: { id:'vld', name:'Цветков Влад',   pos:'Коммерческий директор', av:'ЦВ', c:'#fca5a5,#dc2626' },
+};
+const CANDIDATES = ['mgr','fin','vld','hr'];
+
+// ── шаблоны ЗРС ──
+const TPL = {
+  vacation:  {label:'Отпуск',     emoji:'🌴', tone:'tone-vacation',  sit:'Опиши когда и почему хочешь отпуск. Пример: «Прошу отпуск с 10.10 по 20.10 по личным обстоятельствам»', data:'Что закроешь до отпуска, кому передашь дела, как с тобой связаться в emergency.', sol:'Предлагаю утвердить отпуск с DD.MM по DD.MM с учётом мер передачи дел'},
+  dayoff:    {label:'Выходной',   emoji:'📅', tone:'tone-dayoff',    sit:'Когда и почему нужен выходной.', data:'Что закроешь, кому передашь дела.', sol:'Предлагаю утвердить выходной DD.MM'},
+  absence:   {label:'Отсутствие', emoji:'✈️', tone:'tone-absence',   sit:'Когда и почему будешь отсутствовать.', data:'Кому передаются задачи, контакт для срочной связи.', sol:'Предлагаю согласовать отсутствие с DD.MM по DD.MM'},
+  advance:   {label:'Аванс',      emoji:'💳', tone:'tone-advance',   sit:'Причина запроса аванса.', data:'Сумма, дата возврата / удержания.', sol:'Предлагаю выдать аванс N руб. с удержанием из ЗП за MM.YYYY'},
+  initiative:{label:'Инициатива', emoji:'💡', tone:'tone-initiative',sit:'Опиши проблему / возможность.', data:'Что нужно для реализации, риски.', sol:'Предлагаю сделать X для получения Y. Ресурсы: …'},
+  purchase:  {label:'Закупка',    emoji:'🛒', tone:'tone-purchase',  sit:'Что нужно купить и зачем.', data:'Где, сколько стоит, ссылки.', sol:'Предлагаю одобрить закупку на сумму N руб.'},
+  other:     {label:'Прочее',     emoji:'📄', tone:'tone-other',     sit:'Опиши ситуацию.', data:'Дополнительные данные.', sol:'Предлагаю…'},
+};
+const TPL_ORDER = ['vacation','dayoff','absence','advance','initiative','purchase','other'];
+
+const STATUS = {
+  draft:    {label:'Черновик',        cls:'st-draft'},
+  submitted:{label:'На рассмотрении', cls:'st-submitted'},
+  approved: {label:'Одобрено',        cls:'st-approved'},
+  rejected: {label:'Отклонено',       cls:'st-rejected'},
+  forwarded:{label:'Переслано',       cls:'st-forwarded'},
+};
+
+// ── состояние ──
+let viewAs = 'me';                // чьими глазами смотрим
+let activeRoom = 'r1';
+let zrsSeq = 318;
+const now = () => { const d=new Date(); return d.toTimeString().slice(0,5); };
+
+const zrs = {
+  'z318':{ id:'z318', tpl:'vacation', status:'submitted', writer:'me', approver:'mgr',
+    situation:'Прошу отпуск с 10.10 по 20.10 — семейная поездка, билеты уже куплены.',
+    data:'До отпуска закрою найм 2 человек в dept1, онбординг передаю Ирине Власовой, на срочное — telegram @alyona.',
+    solution:'Предлагаю утвердить отпуск с 10.10 по 20.10. Возврат к работе 21.10.', comment:null }
+};
+
+const rooms = {
+  r1:{ id:'r1', with:'mgr', msgs:[
+        {k:'text', from:'me',  body:'Максим, привет! Хочу согласовать отпуск 🌴', t:'09:35'},
+        {k:'zrs',  from:'me',  zid:'z318', t:'09:36'},
+        {k:'text', from:'mgr', body:'Принял, гляну после планёрки.', t:'09:41'},
+      ]},
+  r2:{ id:'r2', with:'fin', msgs:[
+        {k:'text', from:'fin', body:'По авансам пиши сюда, согласую в течение дня.', t:'вчера'},
+      ]},
+  r3:{ id:'r3', with:'vld', msgs:[
+        {k:'text', from:'vld', body:'Идею по реферальной программе закинь как ЗРС — рассмотрю.', t:'пн'},
+      ]},
+  r4:{ id:'r4', with:'hr', msgs:[
+        {k:'text', from:'hr',  body:'Шаблоны онбординга обновила, забери в Файлах.', t:'пн'},
+      ]},
+};
+const ROOM_ORDER = ['r1','r2','r3','r4'];
+
+// ── helpers ──
+function av(pid, sm){const p=PEOPLE[pid];return `<div class="avatar ${sm?'sm':''}" style="background:linear-gradient(135deg,${p.c})">${p.av}</div>`;}
+function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function lastPreview(r){
+  const m=r.msgs[r.msgs.length-1]; if(!m)return'';
+  if(m.k==='zrs'){const z=zrs[m.zid];return `ЗРС · ${TPL[z.tpl].label}`;}
+  if(m.k==='sys')return m.body;
+  return m.body;
+}
+
+// ── рендер списка комнат ──
+function renderRooms(){
+  const el=document.getElementById('roomlist');
+  el.innerHTML = ROOM_ORDER.map(rid=>{
+    const r=rooms[rid], p=PEOPLE[r.with], on=rid===activeRoom;
+    const hasZ=r.msgs.some(m=>m.k==='zrs');
+    const unread = rid==='r1' && viewAs==='mgr' ? 1 : 0;
+    return `<div class="room ${on?'on':''}" onclick="openRoom('${rid}')">
+      ${av(r.with)}
+      <div class="nm">
+        <div class="t"><b>${p.name}</b><span>${r.msgs[r.msgs.length-1]?.t||''}</span></div>
+        <div class="p">${hasZ?'<span class="status st-submitted" style="padding:1px 6px;font-size:9px">ЗРС</span>':''}${esc(lastPreview(r))}</div>
+      </div>
+      ${unread?`<div class="unread">${unread}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── рендер треда ──
+function openRoom(rid){ activeRoom=rid; renderRooms(); renderThread(); }
+
+function renderThread(){
+  const r=rooms[activeRoom], p=PEOPLE[r.with];
+  document.getElementById('threadhd').innerHTML =
+    `${av(r.with)}<div class="nm"><b>${p.name}</b><span>${p.pos} · в сети</span></div>
+     <div class="ai"><span class="pill">✨ AI</span><span class="pill">👥 Участники</span></div>`;
+
+  // баннер-подсказка под роль
+  const meId = viewAs;
+  const bt=document.getElementById('bannertext');
+  if(viewAs==='mgr' && r.msgs.some(m=>m.k==='zrs' && zrs[m.zid].status==='submitted')){
+    bt.innerHTML = `Вы смотрите как <b>руководитель</b>. На карточке ЗРС ниже доступны действия: одобрить, уточнить, переслать или отклонить — прямо из чата.`;
+  } else if(viewAs==='me'){
+    bt.innerHTML = `Вы смотрите как <b>сотрудник</b>. Нажмите <b>＋</b> в поле ввода или <b>＋ЗРС</b> вверху, чтобы отправить запрос этому собеседнику. Переключитесь на «Максим · руководитель» вверху, чтобы увидеть согласование.`;
+  } else {
+    bt.innerHTML = `Диалог без активных ЗРС. Создайте новый через <b>＋</b>.`;
+  }
+
+  const feed=document.getElementById('feed');
+  feed.innerHTML = r.msgs.map(m=>{
+    if(m.k==='sys') return `<div class="sys">${esc(m.body)}</div>`;
+    if(m.k==='zrs') return zrsCard(m.zid, m.from===meId, m.t, {fwdBy:m.fwd?m.fwdBy:null, readonly:m.fwd});
+    const mine = m.from===meId;
+    return `<div class="msg ${mine?'me':'them'}">
+      ${mine?'':av(m.from,true)}
+      <div class="bubble">${mine?'':`<div class="who">${PEOPLE[m.from].name}</div>`}${esc(m.body)}<span class="tm">${m.t}</span></div>
+    </div>`;
+  }).join('');
+  feed.scrollTop=feed.scrollHeight;
+}
+
+// ── карточка ЗРС в ленте ──
+function zrsCard(zid, mine, t, opts){
+  opts=opts||{};
+  const z=zrs[zid], tp=TPL[z.tpl], st=STATUS[z.status];
+  const decided = z.status==='approved' || z.status==='rejected';
+  const canDecide = !opts.readonly && viewAs==='mgr' && z.approver===viewAs && z.status==='submitted';
+  // печать видна только на решённых
+  const stampMap={approved:['ap','ОДОБРЕНО'],rejected:['re','ОТКЛОНЕНО']};
+  const sealMap ={approved:['ap','✓ Одобрено'],rejected:['re','✕ Отклонено']};
+  const stamp = decided ? `<div class="stamp ${stampMap[z.status][0]}">
+      <span class="big">${stampMap[z.status][1]}</span>
+      <span class="sig">${z.decidedBy||PEOPLE[z.approver].name} · ${z.decidedAt||t}</span></div>` : '';
+  // строка-резолюция внутри тела (читается, даже если печать перекрыта)
+  const seal = decided ? `<div class="sealrow ${sealMap[z.status][0]}">
+      <span>${sealMap[z.status][1]} · ${z.decidedBy||PEOPLE[z.approver].name}, ${z.decidedAt||t}</span>
+      ${z.comment?`<span class="sub">«${esc(z.comment)}»</span>`:''}</div>` : '';
+  return `<div class="zrscard s-${z.status}" style="${mine?'align-self:flex-end':'align-self:flex-start'}">
+    ${opts.fwdBy?`<div class="fwd-note">↪ переслано: ${esc(opts.fwdBy)}</div>`:''}
+    <div class="ch ${tp.tone}">${tp.emoji} ЗРС · ${tp.label}<span class="id">#${zid.replace('z','')}</span></div>
+    ${stamp}
+    <div class="bd">
+      <div class="fld"><div class="l">Ситуация</div><div class="v">${esc(z.situation)}</div></div>
+      ${z.data?`<div class="fld"><div class="l">Данные</div><div class="v">${esc(z.data)}</div></div>`:''}
+      <div class="fld sol"><div class="l">Решение</div><div class="v">${esc(z.solution)}</div></div>
+      ${decided ? seal : `<div class="statusrow">
+        <span class="status ${st.cls}">${st.label}</span>
+        <span style="font-size:11px;color:var(--muted)">кому: ${PEOPLE[z.approver].name}</span>
+      </div>`}
+    </div>
+    ${canDecide?`<div class="acts">
+      <button class="a-ok"  onclick="decide('${zid}','approved')">✓ Одобрить</button>
+      <button class="a-ask" onclick="askMore('${zid}')">？ Уточнить</button>
+      <button class="a-fwd" onclick="openForward('${zid}')">↪ Переслать</button>
+      <button class="a-no"  onclick="decide('${zid}','rejected')">✕ Отклонить</button>
+    </div>`:''}
+    ${decided && !opts.readonly ? `<div class="share">
+      <button onclick="copyZRS('${zid}')">⧉ Копировать</button>
+      <button onclick="openShare('${zid}')">↪ Переслать с резолюцией</button>
+    </div>`:''}
+    <div class="meta-foot"><span>${t}</span><span class="openlink" onclick="alert('В реальном портале: переход на /me/zrs/${zid} с полной историей согласования (zrs_approval_history).')">Открыть карточку →</span></div>
+  </div>`;
+}
+
+// ── копирование / пересылка с резолюцией ──
+function zrsAsText(zid){
+  const z=zrs[zid], tp=TPL[z.tpl], st=STATUS[z.status];
+  const lines=[
+    `ЗРС #${zid.replace('z','')} · ${tp.label}`,
+    `От: ${PEOPLE[z.writer].name}`,
+    `Кому: ${PEOPLE[z.approver].name}`,
+    ``,
+    `СИТУАЦИЯ: ${z.situation}`,
+    z.data?`ДАННЫЕ: ${z.data}`:null,
+    `РЕШЕНИЕ: ${z.solution}`,
+    ``,
+    `РЕЗОЛЮЦИЯ: ${st.label.toUpperCase()}${z.decidedBy?` — ${z.decidedBy}, ${z.decidedAt}`:''}`,
+    z.comment?`КОММЕНТАРИЙ: «${z.comment}»`:null,
+  ].filter(Boolean);
+  return lines.join('\n');
+}
+function copyZRS(zid){
+  const text=zrsAsText(zid);
+  const done=()=>toast('Скопировано с резолюцией');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
+  } else fallbackCopy(text,done);
+}
+function fallbackCopy(text,done){
+  const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done();}catch(e){alert(text);}finally{ta.remove();}
+}
+function openShare(zid){ openModalNode(shareModal(zid)); }
+function applyShare(zid, targetId){
+  let rid = ROOM_ORDER.find(r=>rooms[r].with===targetId);
+  if(!rid){ rid='r'+(ROOM_ORDER.length+1); rooms[rid]={id:rid,with:targetId,msgs:[]}; ROOM_ORDER.push(rid); }
+  rooms[rid].msgs.push({k:'zrs', from:viewAs, zid, t:now(), fwd:true, fwdBy:PEOPLE[viewAs].name});
+  rooms[rid].msgs.push({k:'sys', body:`↪ ${PEOPLE[viewAs].name} переслал(а) ЗРС #${zid.replace('z','')} с резолюцией`, t:now()});
+  activeRoom=rid; closeModal(); renderRooms(); renderThread();
+  toast(`Переслано: ${PEOPLE[targetId].name}`);
+}
+function shareModal(zid){
+  const z=zrs[zid];
+  const list=Object.keys(PEOPLE).filter(id=>id!==viewAs).map(id=>{const p=PEOPLE[id];
+    return `<li onclick="applyShare('${zid}','${id}')">${av(id,true)}
+      <div><b style="font-size:13px">${p.name}</b><div class="pos">${p.pos}</div></div></li>`;}).join('');
+  const node=document.createElement('div');
+  node.innerHTML=modalShell('Переслать с резолюцией',`ЗРС #${zid.replace('z','')} · ${STATUS[z.status].label} — карточка уйдёт получателю вместе с печатью и комментарием`,
+    `<div class="picker"><ul>${list}</ul></div>`);
+  return node;
+}
+function toast(msg){
+  let el=document.getElementById('toast');
+  if(!el){el=document.createElement('div');el.id='toast';el.className='toast';document.body.appendChild(el);}
+  el.textContent=msg;el.classList.add('show');clearTimeout(window.__tt);
+  window.__tt=setTimeout(()=>el.classList.remove('show'),1800);
+}
+
+// ── отправка текста ──
+function autoGrow(t){t.style.height='auto';t.style.height=Math.min(t.scrollHeight,120)+'px';document.getElementById('sendbtn').disabled=!t.value.trim();}
+function composerKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendText();} }
+function sendText(){
+  const t=document.getElementById('composer'); const v=t.value.trim(); if(!v)return;
+  rooms[activeRoom].msgs.push({k:'text',from:viewAs,body:v,t:now()});
+  t.value='';autoGrow(t);renderThread();renderRooms();
+}
+
+// ── решение руководителя ──
+function decide(zid, decision){
+  const isReject = decision==='rejected';
+  openModalNode(decisionModal(zid, decision));
+}
+function applyDecision(zid, decision, comment){
+  const z=zrs[zid]; z.status=decision; z.comment=comment||null;
+  z.decidedBy=PEOPLE[viewAs].name; z.decidedAt=now();
+  const who=PEOPLE[viewAs].name;
+  const txt = decision==='approved' ? `✅ ${who} одобрил(а) ЗРС` : `❌ ${who} отклонил(а) ЗРС`;
+  rooms[activeRoom].msgs.push({k:'sys',body:comment?`${txt}: «${comment}»`:txt,t:now()});
+  closeModal();renderThread();renderRooms();
+}
+function askMore(zid){
+  // «Уточнить» = обычное сообщение в тред, ЗРС остаётся на рассмотрении
+  closeModal();
+  const t=document.getElementById('composer');
+  t.value='Уточни, пожалуйста: ';t.focus();autoGrow(t);
+  rooms[activeRoom].msgs.push({k:'sys',body:`💬 ${PEOPLE[viewAs].name} запросил(а) уточнения по ЗРС`,t:now()});
+  renderThread();renderRooms();
+}
+function openForward(zid){ openModalNode(forwardModal(zid)); }
+function applyForward(zid,newId,comment){
+  const z=zrs[zid]; const oldName=PEOPLE[z.approver].name; z.approver=newId; z.status='submitted';
+  rooms[activeRoom].msgs.push({k:'sys',body:`↪ ${PEOPLE[viewAs].name} переслал(а) ЗРС → ${PEOPLE[newId].name}${comment?`: «${comment}»`:''}`,t:now()});
+  closeModal();renderThread();renderRooms();
+}
+
+// ── создание нового ЗРС ──
+let draft = null;
+function openTypePicker(){
+  draft = { tpl:null, situation:'', data:'', solution:'', approver: rooms[activeRoom].with };
+  openModalNode(typePickerModal());
+}
+function chooseType(tpl){ draft.tpl=tpl; openModalNode(formModal()); }
+
+function submitZRS(){
+  const id='z'+(++zrsSeq);
+  zrs[id]={ id, tpl:draft.tpl, status:'submitted', writer:'me', approver:draft.approver,
+    situation:draft.situation, data:draft.data, solution:draft.solution, comment:null };
+  // chat_get_or_create_direct → находим комнату с этим адресатом
+  let rid = ROOM_ORDER.find(r=>rooms[r].with===draft.approver);
+  if(!rid){ rid='r'+(ROOM_ORDER.length+1); rooms[rid]={id:rid,with:draft.approver,msgs:[]}; ROOM_ORDER.push(rid); }
+  rooms[rid].msgs.push({k:'zrs',from:'me',zid:id,t:now()});
+  rooms[rid].msgs.push({k:'sys',body:`📨 ЗРС отправлено · ${PEOPLE[draft.approver].name} получил(а) уведомление`,t:now()});
+  activeRoom=rid;
+  closeModal();
+  if(viewAs!=='me') setViewAs('me');
+  renderRooms();renderThread();
+}
+
+// ── модалки ──
+function modalShell(title,sub,bodyHtml){
+  return `<div class="mh"><div><h3>${title}</h3>${sub?`<div class="s">${sub}</div>`:''}</div>
+    <button class="x" onclick="closeModal()">×</button></div><div class="mb">${bodyHtml}</div>`;
+}
+function typePickerModal(){
+  const cards = TPL_ORDER.map(k=>{
+    const tp=TPL[k];
+    return `<button class="tcard" onclick="chooseType('${k}')">
+      <div class="ti ${tp.tone}">${tp.emoji}</div><b>${tp.label}</b></button>`;
+  }).join('');
+  const node=document.createElement('div');
+  node.innerHTML=modalShell('Новый ЗРС',`Получатель по умолчанию: ${PEOPLE[draft.approver].name}`,
+    `<p style="font-size:13px;color:var(--muted);margin:0 0 12px">Выберите тип:</p><div class="grid7">${cards}</div>`);
+  return node;
+}
+function formModal(){
+  const tp=TPL[draft.tpl];
+  const node=document.createElement('div');
+  node.innerHTML=modalShell('Новый ЗРС',`Будет отправлено как карточка в чат · realtime-уведомление адресату`,
+    `<div class="seltype">
+       <div class="ti ${tp.tone}">${tp.emoji}</div><b>${tp.label}</b>
+       <button class="chg" onclick="openTypePicker()">Сменить тип</button>
+     </div>
+     <div class="field"><label>Ситуация <span class="req">*</span></label>
+       <textarea id="f-sit" rows="3" placeholder="${esc(tp.sit)}" oninput="draft.situation=this.value;validForm()"></textarea></div>
+     <div class="field"><label>Данные</label>
+       <textarea id="f-dat" rows="3" placeholder="${esc(tp.data)}" oninput="draft.data=this.value"></textarea></div>
+     <div class="field"><label>Решение <span class="req">*</span></label>
+       <textarea id="f-sol" rows="2" placeholder="${esc(tp.sol)}" oninput="draft.solution=this.value;validForm()"></textarea></div>
+
+     <label style="display:block;font-size:12px;font-weight:800;color:var(--ink-soft);margin-bottom:6px">Кому отправить</label>
+     <div id="approver-wrap"></div>
+     <div class="infohint">По умолчанию — прямой руководитель по оргсхеме. Можно выбрать любого сотрудника (например инициативу — напрямую директору, минуя цепочку).</div>
+
+     <div class="mfoot">
+       <button class="ghost" onclick="openTypePicker()">Назад</button>
+       <button class="primary" id="submitbtn" disabled onclick="submitZRS()">
+         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+         Отправить и открыть в чате
+       </button>
+     </div>`);
+  setTimeout(()=>{renderApprover();validForm();
+    const s=node.querySelector('#f-sit'); if(s){s.value=draft.situation;}
+    const d=node.querySelector('#f-dat'); if(d){d.value=draft.data;}
+    const so=node.querySelector('#f-sol'); if(so){so.value=draft.solution;}
+  },0);
+  return node;
+}
+let pickerOpen=false;
+function renderApprover(){
+  const w=document.getElementById('approver-wrap'); if(!w)return;
+  const a=PEOPLE[draft.approver];
+  let html=`<div class="approver">${av(draft.approver)}
+      <div><b style="font-size:14px">${a.name}</b><div class="pos" style="font-size:11.5px;color:var(--muted)">${a.pos}</div></div>
+      ${a.rec?'<span class="by">по оргсхеме</span>':''}
+      <button class="chg" onclick="togglePicker()">Изменить</button></div>`;
+  if(pickerOpen){
+    const list=CANDIDATES.map(id=>{const p=PEOPLE[id];
+      return `<li onclick="pickApprover('${id}')">${av(id,true)}
+        <div><b style="font-size:13px">${p.name}</b><div class="pos">${p.pos}</div></div>
+        ${p.rec?'<span class="rec">по оргсхеме</span>':''}</li>`;}).join('');
+    html+=`<div class="picker"><div class="ps">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input placeholder="Найти сотрудника по имени или должности" autofocus/></div><ul>${list}</ul></div>`;
+  }
+  w.innerHTML=html;
+}
+function togglePicker(){pickerOpen=!pickerOpen;renderApprover();}
+function pickApprover(id){draft.approver=id;pickerOpen=false;renderApprover();}
+function validForm(){const b=document.getElementById('submitbtn');if(b)b.disabled=!(draft.situation.trim()&&draft.solution.trim());}
+
+function decisionModal(zid, decision){
+  const isReject = decision==='rejected';
+  const z=zrs[zid],tp=TPL[z.tpl];
+  const ph = isReject ? 'Причина отказа' : 'Например: согласовано, передай дела Ирине';
+  const node=document.createElement('div');
+  node.innerHTML=modalShell(isReject?'Отклонить ЗРС':'Одобрить ЗРС',`${tp.label} · ${esc(z.situation).slice(0,56)}…`,
+    `<div class="field"><label>Комментарий ${isReject?'<span class="req">*</span>':'(необязательно)'}</label>
+      <textarea id="dec-c" rows="4" placeholder="${ph}"></textarea></div>
+     <div class="mfoot">
+       <button class="ghost" onclick="closeModal()">Отмена</button>
+       <button class="${isReject?'danger':'okbtn'}" id="decok" ${isReject?'disabled':''}
+         onclick="applyDecision('${zid}','${decision}',document.getElementById('dec-c').value.trim())">
+         ${isReject?'Отклонить':'Одобрить'}</button>
+     </div>`);
+  if(isReject) setTimeout(()=>{
+    const ta=node.querySelector('#dec-c'), ok=node.querySelector('#decok');
+    if(ta&&ok) ta.addEventListener('input',()=>{ ok.disabled=!ta.value.trim(); });
+  },0);
+  return node;
+}
+function forwardModal(zid){
+  const z=zrs[zid];
+  const list=CANDIDATES.filter(id=>id!==z.approver).map(id=>{const p=PEOPLE[id];
+    return `<li onclick="window.__fwd='${id}';[...document.querySelectorAll('#fwd-list li')].forEach(x=>x.classList.remove('act'));event.currentTarget.classList.add('act')">
+      ${av(id,true)}<div><b style="font-size:13px">${p.name}</b><div class="pos">${p.pos}</div></div></li>`;}).join('');
+  window.__fwd=null;
+  const node=document.createElement('div');
+  node.innerHTML=modalShell('Переслать ЗРС','Передать согласование другому ответственному',
+    `<div class="picker"><ul id="fwd-list">${list}</ul></div>
+     <div class="field" style="margin-top:14px"><label>Комментарий <span class="req">*</span></label>
+       <textarea id="fwd-c" rows="3" placeholder="Почему пересылаете" oninput="document.getElementById('fwdok').disabled=!(this.value.trim()&&window.__fwd)"></textarea></div>
+     <div class="mfoot">
+       <button class="ghost" onclick="closeModal()">Отмена</button>
+       <button class="primary" id="fwdok" disabled onclick="applyForward('${zid}',window.__fwd,document.getElementById('fwd-c').value.trim())">↪ Переслать</button>
+     </div>`);
+  return node;
+}
+
+// ── modal host control ──
+function openModalNode(node){const m=document.getElementById('modal');m.innerHTML='';m.appendChild(node);document.getElementById('scrim').classList.add('show');}
+function closeModal(){document.getElementById('scrim').classList.remove('show');}
+
+// ── view-as ──
+function setViewAs(v){
+  viewAs=v;
+  document.getElementById('va-emp').classList.toggle('on',v==='me');
+  document.getElementById('va-mgr').classList.toggle('on',v==='mgr');
+  const p=PEOPLE[v==='me'?'me':'mgr'];
+  document.getElementById('me-name').textContent=p.name;
+  const a=document.getElementById('me-av');a.textContent=p.av;a.style.background=`linear-gradient(135deg,${p.c})`;
+  // руководитель смотрит диалог с сотрудником → в r1 "with" это mgr; для наглядности при mgr показываем тот же тред
+  renderRooms();renderThread();
+}
+
+// init
+renderRooms();renderThread();
+</script>
+</body>
+</html>

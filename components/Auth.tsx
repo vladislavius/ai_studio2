@@ -152,6 +152,15 @@ export default function Auth({ onBypass }: AuthProps) {
                 </button>
             </form>
 
+            <button
+                type="button"
+                onClick={onBypass}
+                className="w-full mt-3 py-2.5 border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+            >
+                <WifiOff size={16} />
+                Демо-режим (посмотреть прототип ЗРС в чате)
+            </button>
+
             <div className="mt-6 pt-6 border-t border-slate-100 text-center">
                 {mode === 'login' ? (
                     <button 
