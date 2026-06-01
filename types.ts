@@ -116,4 +116,59 @@ export interface StatisticValue {
   notes?: string;
 }
 
-export type ViewMode = 'employees' | 'org_chart' | 'statistics' | 'settings';
+export type ViewMode = 'employees' | 'org_chart' | 'statistics' | 'settings' | 'chat';
+
+// --- Chat & ZRS types ---
+
+export type ZrsType =
+  | 'vacation'      // Отпуск
+  | 'dayoff'        // Выходной
+  | 'absence'       // Отсутствие
+  | 'advance'       // Аванс
+  | 'initiative'    // Инициатива
+  | 'purchase'      // Закупка
+  | 'other';        // Прочее
+
+export type ZrsStatus =
+  | 'draft'
+  | 'sent'
+  | 'in_review'
+  | 'need_info'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled';
+
+export interface ZrsRequest {
+  id: string;
+  type: ZrsType;
+  status: ZrsStatus;
+  author_id: string;
+  recipient_id: string;
+  situation: string;
+  data?: string;
+  solution: string;
+  payload?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  decision_comment?: string;
+}
+
+export type ChatMessageKind = 'text' | 'zrs' | 'system';
+
+export interface ChatMessage {
+  id: string;
+  room_id: string;
+  author_id: string;     // '' for system
+  kind: ChatMessageKind;
+  body?: string;
+  zrs_id?: string;
+  created_at: string;
+}
+
+export interface ChatRoom {
+  id: string;
+  kind: 'dm' | 'group';
+  participant_ids: string[];
+  title?: string;
+  last_read_at?: Record<string, string>;
+}

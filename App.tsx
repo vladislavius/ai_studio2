@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Briefcase, Cake, FileDown, Plus, Search, Menu, LayoutGrid, Database, Settings as SettingsIcon, Loader2, LogOut, TrendingUp, WifiOff, Network, List, ChevronLeft, ChevronRight, X, Shield, Edit3, Lock, Filter } from 'lucide-react';
+import { Users, Briefcase, Cake, FileDown, Plus, Search, Menu, LayoutGrid, Database, Settings as SettingsIcon, Loader2, LogOut, TrendingUp, WifiOff, Network, List, ChevronLeft, ChevronRight, X, Shield, Edit3, Lock, Filter, MessageSquare } from 'lucide-react';
 import EmployeeList from './components/EmployeeList';
 import EmployeeModal from './components/EmployeeModal';
 import Birthdays from './components/Birthdays';
-import Settings from './components/Settings'; 
+import Settings from './components/Settings';
 import StatisticsTab from './components/StatisticsTab';
 import OrgChart from './components/OrgChart';
+import ChatCenter from './components/ChatCenter';
 import Auth from './components/Auth';
 import ConfirmationModal from './components/ConfirmationModal';
 import { ORGANIZATION_STRUCTURE, ADMIN_EMAILS } from './constants';
@@ -420,6 +421,18 @@ function App() {
                 {!isSidebarCollapsed && <span className="whitespace-nowrap">Сотрудники</span>}
                 </button>
             )}
+            <button onClick={() => { setCurrentView('chat'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium group relative ${currentView === 'chat' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+              <div className="flex-shrink-0 relative">
+                <MessageSquare size={20} />
+                <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center">2</span>
+              </div>
+              {!isSidebarCollapsed && (
+                <span className="whitespace-nowrap flex items-center gap-2">
+                  Чат
+                  <span className="text-[9px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">ЗРС</span>
+                </span>
+              )}
+            </button>
           </div>
 
           <div>
@@ -506,6 +519,7 @@ function App() {
               {currentView === 'org_chart' && <OrgChart employees={employees} onSelectEmployee={handleEditClick} orgStructure={orgStructure} onUpdateOrg={handleUpdateOrgStructure} isAdmin={isAdmin} />}
               {currentView === 'settings' && isAdmin && <Settings employees={employees} onImport={handleImportData} />}
               {currentView === 'statistics' && <StatisticsTab employees={employees} isOffline={isOffline} selectedDeptId={selectedDept} isAdmin={isAdmin} />}
+              {currentView === 'chat' && <ChatCenter employees={employees} currentUserEmail={session?.user?.email} />}
 
               {currentView === 'employees' && isAdmin && (
                 <div className="flex flex-col h-full space-y-4">
