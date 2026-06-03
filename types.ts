@@ -116,4 +116,221 @@ export interface StatisticValue {
   notes?: string;
 }
 
-export type ViewMode = 'employees' | 'org_chart' | 'statistics' | 'settings';
+export type ViewMode = 'employees' | 'org_chart' | 'statistics' | 'finplan' | 'settings';
+
+// ============================================================================
+// ФИНАНСОВОЕ ПЛАНИРОВАНИЕ (адаптация серии "Финансы" под турбизнес)
+// ============================================================================
+
+export type PlanStatus = 'draft' | 'collecting' | 'review' | 'approved' | 'executing' | 'closed';
+
+export interface WeeklyPlan {
+  id: string;
+  week_start: string; // YYYY-MM-DD (понедельник)
+  week_end: string;   // воскресенье
+  status: PlanStatus;
+  income_projected: number;
+  income_actual: number;
+  expense_projected: number;
+  expense_actual: number;
+  cash_on_hand_start: number;
+  cash_on_hand_end?: number;
+  solvency_ratio?: number; // Резервы / Счета к оплате
+  notes?: string;
+  approved_by?: string;
+  approved_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type IncomeSource =
+  | 'group_tours'        // Групповые туры
+  | 'individual_tours'   // Индивидуальные туры
+  | 'excursions'         // Экскурсии
+  | 'transfers'          // Трансферы
+  | 'hotel_commission'   // Комиссии от отелей
+  | 'partners'           // Партнёрский поток
+  | 'corporate'          // Корпоративные клиенты
+  | 'other';
+
+export interface IncomeForecast {
+  id: string;
+  plan_id: string;
+  source: IncomeSource;
+  description?: string;
+  amount_projected: number;
+  amount_actual: number;
+  confidence: 'high' | 'medium' | 'low'; // степень уверенности в поступлении
+  notes?: string;
+}
+
+export type ExpensePriority = 'critical' | 'high' | 'normal' | 'low';
+export type ExpenseStatus = 'proposed' | 'reviewed' | 'approved' | 'rejected' | 'paid';
+
+export type ExpenseCategory =
+  | 'payroll'            // ФОТ
+  | 'taxes'              // Налоги и взносы
+  | 'rent'               // Аренда
+  | 'utilities'          // Связь, интернет, ЖКХ
+  | 'marketing'          // Реклама и продвижение
+  | 'hotel_prepay'       // Предоплаты отелям
+  | 'transport'          // Транспорт, ГСМ
+  | 'guides_fees'        // Гонорары гидам/подрядчикам
+  | 'insurance'          // Страхование
+  | 'software'           // ПО, подписки
+  | 'office'             // Канцелярия, офис
+  | 'maintenance'        // Обслуживание оборудования
+  | 'training'           // Обучение персонала
+  | 'pr'                 // PR
+  | 'legal'              // Юр. сопровождение
+  | 'bank_fees'          // Банковские комиссии
+  | 'other';
+
+export interface ExpenseProposal {
+  id: string;
+  plan_id: string;
+  dept_id: string;          // подразделение-инициатор
+  category: ExpenseCategory;
+  title: string;            // короткое название
+  justification: string;    // обоснование
+  amount: number;
+  priority: ExpensePriority;
+  status: ExpenseStatus;
+  proposer?: string;        // ФИО инициатора
+  reviewed_by?: string;     // бюджетный комитет
+  approved_by?: string;     // исполнительный комитет
+  rejection_reason?: string;
+  payment_date?: string;
+  vendor?: string;          // получатель/поставщик
+  is_recurring?: boolean;   // регулярный платёж
+  created_at: string;
+  updated_at: string;
+}
+
+export type ReserveType = 'operational' | 'tax' | 'growth' | 'emergency' | 'investment' | 'payroll';
+
+export interface ReserveAccount {
+  id: string;
+  name: string;
+  type: ReserveType;
+  description?: string;
+  balance: number;
+  target_balance?: number;     // целевой остаток
+  min_balance?: number;        // неснижаемый остаток
+  allocation_percent?: number; // % от валового дохода направляется сюда
+  bank_name?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AllocationRule {
+  id: string;
+  account_id: string;       // → ReserveAccount.id
+  account_name: string;
+  percent: number;          // доля от валового дохода
+  priority: number;         // порядок наполнения
+  notes?: string;
+}
+
+export type TxType = 'income' | 'expense' | 'transfer';
+
+export interface BankTransaction {
+  id: string;
+  plan_id?: string;
+  date: string;
+  type: TxType;
+  amount: number;
+  category?: ExpenseCategory | IncomeSource;
+  counterparty?: string;
+  description?: string;
+  account_id?: string;       // ReserveAccount.id (со/на какой счёт)
+  reconciled: boolean;       // сверено с банком
+  bank_ref?: string;         // номер операции в банке
+  proposal_id?: string;      // если связано с заявкой
+  created_at: string;
+}
+
+export interface SolvencySnapshot {
+  id: string;
+  date: string;
+  cash_on_hand: number;        // деньги в наличии
+  accounts_receivable: number; // дебиторская
+  accounts_payable: number;    // кредиторская
+  reserves_total: number;      // суммарные резервы
+  solvency_ratio: number;      // Резервы / Счета к оплате
+  notes?: string;
+}
+
+// Состояние недельного плана по формуле "Резервы / Счета к оплате"
+export type FinancialCondition = 'crisis' | 'danger' | 'emergency' | 'normal' | 'affluence' | 'power';
+
+// ============================================================================
+// ФП №1 — программа расчёта базовых еженедельных потребностей
+// ============================================================================
+
+export type FP1SectionKey =
+  | 'personnel'   // Раздел 1 — Персонал
+  | 'basic_needs' // Раздел 2 — Базовые нужды для существования
+  | 'promotion'   // Раздел 3 — Базовое продвижение
+  | 'comms'       // Раздел 4 — Коммуникационные линии
+  | 'delivery'    // Раздел 5 — Базовые действия по предоставлению услуг
+  | 'commodity';  // Раздел 6 — Товарный счёт (отдельно)
+
+export interface FP1LineItem {
+  id: string;
+  section: FP1SectionKey;
+  title: string;
+  weekly_amount: number;
+  notes?: string;
+  is_percent?: boolean;     // отчисление в % от СВД
+  percent_of_svd?: number;  // если процентное — какой %
+  sort_order?: number;
+}
+
+export interface FP1Snapshot {
+  id: string;
+  week_start: string;
+  total_weekly_need: number;        // суммарный необходимый еженедельный доход
+  avg_svd_4mo: number;              // средний СВД за 4 месяца
+  current_income: number;           // фактический доход недели
+  break_even_status: 'below' | 'at' | 'above';   // отношение реального дохода к переломной точке
+  overdue_payments: number;         // просроченные счета к оплате
+  notes?: string;
+  created_at: string;
+}
+
+export type ApprovalStage =
+  | 'dept_requests'   // Руководители отделов подают заявки
+  | 'budget_review'   // Бюджетный комитет: проект плана
+  | 'exec_decision'   // Исполнительный комитет: решение
+  | 'fin_allocation'; // Финансовый менеджер: ассигнования
+
+export interface ApprovalEvent {
+  id: string;
+  plan_id: string;
+  stage: ApprovalStage;
+  actor: string;       // ФИО / роль
+  decided_at: string;
+  decision: 'approved' | 'rejected' | 'returned' | 'pending';
+  comment?: string;
+}
+
+export type FP1DocKey =
+  | 'bank_summary'        // сводка по банковским счетам
+  | 'payables_summary'    // сводка счетов к оплате
+  | 'receivables_summary' // сводка дебиторки
+  | 'cash_on_hand'        // расчёт «Деньги в наличии»
+  | 'avg_svd'             // средний СВД за 4 месяца
+  | 'fp1_current'         // текущий ФП №1
+  | 'income_plan'         // план дохода на неделю
+  | 'expense_plan';       // проект финплана расходов
+
+export interface FP1DocStatus {
+  key: FP1DocKey;
+  ready: boolean;
+  prepared_by?: string;
+  prepared_at?: string;
+  notes?: string;
+}
+
