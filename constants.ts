@@ -1,4 +1,4 @@
-import { Department, WiseCondition } from './types';
+import { Department, WiseCondition, IncomeSource, ExpenseCategory, ExpensePriority, ExpenseStatus, ReserveType, FinancialCondition, PlanStatus, ReserveAccount, AllocationRule } from './types';
 
 // --- SECURITY CONFIGURATION ---
 export const ADMIN_EMAILS = ['hrtisland@gmail.com'];
@@ -226,4 +226,124 @@ export const HANDBOOK_STATISTICS = [
     { owner_id: "dept6_18", title: "Доход от партнерской сети", is_favorite: false },
     { owner_id: "dept6_18", title: "Кол-во встреч с партнерами", is_favorite: false },
     { owner_id: "dept6_18", title: "Новые заключенные договора", is_favorite: false }
+];
+
+// ============================================================================
+// ФИНАНСОВОЕ ПЛАНИРОВАНИЕ — справочники
+// ============================================================================
+
+export const INCOME_SOURCE_LABELS: Record<IncomeSource, { label: string; color: string; icon: string }> = {
+  group_tours:      { label: 'Групповые туры',      color: '#3b82f6', icon: 'users' },
+  individual_tours: { label: 'Индивидуальные туры', color: '#8b5cf6', icon: 'user' },
+  excursions:       { label: 'Экскурсии',           color: '#22c55e', icon: 'map' },
+  transfers:        { label: 'Трансферы',           color: '#06b6d4', icon: 'car' },
+  hotel_commission: { label: 'Комиссии отелей',     color: '#f59e0b', icon: 'building' },
+  partners:         { label: 'Партнёры и агенты',   color: '#ec4899', icon: 'handshake' },
+  corporate:        { label: 'Корпоративные клиенты', color: '#64748b', icon: 'briefcase' },
+  other:            { label: 'Прочие поступления',  color: '#94a3b8', icon: 'circle' },
+};
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { label: string; color: string }> = {
+  payroll:      { label: 'ФОТ (зарплаты)',          color: '#ef4444' },
+  taxes:        { label: 'Налоги и взносы',         color: '#dc2626' },
+  rent:         { label: 'Аренда',                  color: '#a855f7' },
+  utilities:    { label: 'Связь / ЖКХ',             color: '#6366f1' },
+  marketing:    { label: 'Маркетинг и реклама',     color: '#ec4899' },
+  hotel_prepay: { label: 'Предоплаты отелям',       color: '#f59e0b' },
+  transport:    { label: 'Транспорт и ГСМ',         color: '#06b6d4' },
+  guides_fees:  { label: 'Гонорары гидам',          color: '#10b981' },
+  insurance:    { label: 'Страхование',             color: '#0891b2' },
+  software:     { label: 'ПО и подписки',           color: '#8b5cf6' },
+  office:       { label: 'Офисные расходы',         color: '#64748b' },
+  maintenance:  { label: 'Обслуживание',            color: '#475569' },
+  training:     { label: 'Обучение персонала',      color: '#22c55e' },
+  pr:           { label: 'PR и репутация',          color: '#f97316' },
+  legal:        { label: 'Юр. сопровождение',       color: '#334155' },
+  bank_fees:    { label: 'Банковские комиссии',     color: '#94a3b8' },
+  other:        { label: 'Прочие расходы',          color: '#cbd5e1' },
+};
+
+export const PRIORITY_LABELS: Record<ExpensePriority, { label: string; color: string; bg: string; order: number }> = {
+  critical: { label: 'Критично',   color: '#dc2626', bg: '#fef2f2', order: 1 },
+  high:     { label: 'Высокий',    color: '#f97316', bg: '#fff7ed', order: 2 },
+  normal:   { label: 'Обычный',    color: '#3b82f6', bg: '#eff6ff', order: 3 },
+  low:      { label: 'Низкий',     color: '#64748b', bg: '#f1f5f9', order: 4 },
+};
+
+export const STATUS_LABELS: Record<ExpenseStatus, { label: string; color: string; bg: string }> = {
+  proposed: { label: 'Подана',     color: '#64748b', bg: '#f1f5f9' },
+  reviewed: { label: 'Рассмотрена',color: '#3b82f6', bg: '#eff6ff' },
+  approved: { label: 'Утверждена', color: '#22c55e', bg: '#f0fdf4' },
+  rejected: { label: 'Отклонена',  color: '#ef4444', bg: '#fef2f2' },
+  paid:     { label: 'Оплачена',   color: '#0ea5e9', bg: '#f0f9ff' },
+};
+
+export const PLAN_STATUS_LABELS: Record<PlanStatus, { label: string; color: string; bg: string; order: number }> = {
+  draft:      { label: 'Черновик',         color: '#94a3b8', bg: '#f1f5f9', order: 1 },
+  collecting: { label: 'Сбор заявок',      color: '#0ea5e9', bg: '#f0f9ff', order: 2 },
+  review:     { label: 'На рассмотрении',  color: '#f59e0b', bg: '#fffbeb', order: 3 },
+  approved:   { label: 'Утверждён',        color: '#22c55e', bg: '#f0fdf4', order: 4 },
+  executing:  { label: 'В исполнении',     color: '#8b5cf6', bg: '#f5f3ff', order: 5 },
+  closed:     { label: 'Закрыт',           color: '#64748b', bg: '#f8fafc', order: 6 },
+};
+
+export const RESERVE_TYPE_LABELS: Record<ReserveType, { label: string; color: string; description: string }> = {
+  operational: { label: 'Оборотный',      color: '#3b82f6', description: 'Текущие операции компании' },
+  payroll:     { label: 'Зарплатный',     color: '#ef4444', description: 'Защищённые средства на ФОТ' },
+  tax:         { label: 'Налоговый',      color: '#dc2626', description: 'Накопления для уплаты налогов' },
+  growth:      { label: 'Развития',       color: '#22c55e', description: 'Инвестиции в рост (маркетинг, новые продукты)' },
+  investment:  { label: 'Инвестиционный', color: '#8b5cf6', description: 'Долгосрочные капитальные вложения' },
+  emergency:   { label: 'Резервный',      color: '#f59e0b', description: 'Подушка безопасности на форс-мажор' },
+};
+
+// Финансовое состояние — формула: Резервы / Кредиторская задолженность.
+// Чем выше коэффициент, тем устойчивее компания. Адаптация условий из источника.
+export const FINANCIAL_CONDITION_LABELS: Record<FinancialCondition, { label: string; color: string; bg: string; threshold: number; action: string }> = {
+  crisis:    { label: 'Кризис',         color: '#7f1d1d', bg: '#fef2f2', threshold: 0.5, action: 'Срочно сократить расходы, остановить все необязательные платежи, мобилизовать сбор дебиторки.' },
+  danger:    { label: 'Опасность',      color: '#dc2626', bg: '#fef2f2', threshold: 1.0, action: 'Заморозить новые траты, провести ревизию всех контрактов, увеличить активность по продажам.' },
+  emergency: { label: 'Чрезвычайная',   color: '#f97316', bg: '#fff7ed', threshold: 1.5, action: 'Усилить продвижение и продажи, экономить, готовиться к спросу, укрепить дисциплину.' },
+  normal:    { label: 'Норма',          color: '#22c55e', bg: '#f0fdf4', threshold: 2.5, action: 'Не менять то, что работает. Изучать причины роста статистик.' },
+  affluence: { label: 'Изобилие',       color: '#3b82f6', bg: '#eff6ff', threshold: 4.0, action: 'Оплатить все счета. Инвестировать в средства производства. Усилить то, что вызвало рост.' },
+  power:     { label: 'Могущество',     color: '#8b5cf6', bg: '#f5f3ff', threshold: 999,  action: 'Не разрывайте связей. Систематизируйте успешные процессы. Документируйте политики.' },
+};
+
+export const computeFinancialCondition = (ratio: number): FinancialCondition => {
+  if (ratio < 0.5) return 'crisis';
+  if (ratio < 1.0) return 'danger';
+  if (ratio < 1.5) return 'emergency';
+  if (ratio < 2.5) return 'normal';
+  if (ratio < 4.0) return 'affluence';
+  return 'power';
+};
+
+// Базовый набор счетов резервов и правила распределения (можно редактировать в UI)
+export const DEFAULT_RESERVE_ACCOUNTS: Omit<ReserveAccount, 'id' | 'created_at' | 'updated_at'>[] = [
+  { name: 'Оборотный счёт',        type: 'operational', description: 'Текущие операции',                  balance: 0, target_balance: 0, allocation_percent: 35, is_active: true },
+  { name: 'Зарплатный резерв',     type: 'payroll',     description: 'Защищённые средства на ФОТ',        balance: 0, target_balance: 0, allocation_percent: 25, is_active: true },
+  { name: 'Налоговый резерв',      type: 'tax',         description: 'Накопления для уплаты налогов',      balance: 0, target_balance: 0, allocation_percent: 15, is_active: true },
+  { name: 'Резервный фонд',        type: 'emergency',   description: 'Подушка безопасности 3-6 мес.',      balance: 0, target_balance: 0, allocation_percent: 10, is_active: true },
+  { name: 'Фонд развития',         type: 'growth',      description: 'Маркетинг, новые направления',       balance: 0, target_balance: 0, allocation_percent: 10, is_active: true },
+  { name: 'Инвестиционный фонд',   type: 'investment',  description: 'Капитальные вложения, имущество',    balance: 0, target_balance: 0, allocation_percent: 5,  is_active: true },
+];
+
+// Регламент финпланирования — рабочая неделя (адаптировано из источника)
+export const FIN_PLANNING_WORKFLOW: { day: string; phase: PlanStatus; title: string; description: string; role: string }[] = [
+  { day: 'Понедельник', phase: 'collecting', title: 'Сбор заявок и прогноза дохода',
+    description: 'Руководители отделов подают заявки на расходы по своим подразделениям. Финансовый менеджер собирает прогноз поступлений по источникам (туры, экскурсии, трансферы, партнёры).',
+    role: 'Руководители отделов + Финансовый менеджер' },
+  { day: 'Вторник',     phase: 'review',     title: 'Рассмотрение в бюджетном комитете',
+    description: 'Бюджетный комитет (главы департаментов) сортирует заявки по приоритету, проверяет обоснованность, сопоставляет с прогнозом дохода. Готовит рекомендации.',
+    role: 'Бюджетный комитет' },
+  { day: 'Среда',       phase: 'approved',   title: 'Утверждение исполнительным комитетом',
+    description: 'Исполнительный комитет (руководство компании) принимает финплан на неделю: утверждает расходы, аллокацию по резервам, подписывает приказ.',
+    role: 'Исполнительный комитет' },
+  { day: 'Четверг',     phase: 'executing',  title: 'Исполнение платежей',
+    description: 'Финансовая служба проводит утверждённые платежи. Каждая операция фиксируется и сверяется с заявкой.',
+    role: 'Финансовый отдел' },
+  { day: 'Пятница',     phase: 'executing',  title: 'Доисполнение и сбор поступлений',
+    description: 'Завершение платежей недели. Активный сбор дебиторской задолженности. Учёт фактических поступлений.',
+    role: 'Финансовый отдел + Коммерческий отдел' },
+  { day: 'Суббота',     phase: 'closed',     title: 'Сверка с банком, отчёт по платёжеспособности',
+    description: 'Банковская сверка всех операций. Расчёт коэффициента «Резервы / Счета к оплате». Закрытие недельного плана. Передача данных в архив.',
+    role: 'Финансовый менеджер' },
 ];

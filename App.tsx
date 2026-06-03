@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Briefcase, Cake, FileDown, Plus, Search, Menu, LayoutGrid, Database, Settings as SettingsIcon, Loader2, LogOut, TrendingUp, WifiOff, Network, List, ChevronLeft, ChevronRight, X, Shield, Edit3, Lock, Filter } from 'lucide-react';
+import { Users, Briefcase, Cake, FileDown, Plus, Search, Menu, LayoutGrid, Database, Settings as SettingsIcon, Loader2, LogOut, TrendingUp, WifiOff, Network, List, ChevronLeft, ChevronRight, X, Shield, Edit3, Lock, Filter, Wallet } from 'lucide-react';
 import EmployeeList from './components/EmployeeList';
 import EmployeeModal from './components/EmployeeModal';
 import Birthdays from './components/Birthdays';
-import Settings from './components/Settings'; 
+import Settings from './components/Settings';
 import StatisticsTab from './components/StatisticsTab';
 import OrgChart from './components/OrgChart';
 import Auth from './components/Auth';
 import ConfirmationModal from './components/ConfirmationModal';
+import FinPlan from './components/FinPlan';
 import { ORGANIZATION_STRUCTURE, ADMIN_EMAILS } from './constants';
 import { Employee, ViewMode, Attachment, Department } from './types';
 import { supabase } from './supabaseClient';
@@ -438,6 +439,14 @@ function App() {
             </div>
           </div>
 
+          <div className="mt-6 border-t border-slate-100 pt-4">
+              {!isSidebarCollapsed && <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 animate-in fade-in">Финансы</p>}
+              <button onClick={() => { setCurrentView('finplan'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium group relative ${currentView === 'finplan' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <div className="flex-shrink-0"><Wallet size={20} /></div>
+                  {!isSidebarCollapsed && <span className="whitespace-nowrap">Финпланирование</span>}
+              </button>
+          </div>
+
           {isAdmin && (
               <div className="mt-6 border-t border-slate-100 pt-4">
                   {!isSidebarCollapsed && <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 animate-in fade-in">Конфигурация</p>}
@@ -506,6 +515,7 @@ function App() {
               {currentView === 'org_chart' && <OrgChart employees={employees} onSelectEmployee={handleEditClick} orgStructure={orgStructure} onUpdateOrg={handleUpdateOrgStructure} isAdmin={isAdmin} />}
               {currentView === 'settings' && isAdmin && <Settings employees={employees} onImport={handleImportData} />}
               {currentView === 'statistics' && <StatisticsTab employees={employees} isOffline={isOffline} selectedDeptId={selectedDept} isAdmin={isAdmin} />}
+              {currentView === 'finplan' && <FinPlan employees={employees} isOffline={isOffline} isAdmin={isAdmin} />}
 
               {currentView === 'employees' && isAdmin && (
                 <div className="flex flex-col h-full space-y-4">
