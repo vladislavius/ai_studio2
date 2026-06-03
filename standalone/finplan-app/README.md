@@ -26,7 +26,7 @@
 
 ```bash
 npm install
-npm run dev      # http://localhost:5180
+npm run dev      # http://localhost:5190
 npm run build    # сборка в dist/
 ```
 
