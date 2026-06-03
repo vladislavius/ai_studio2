@@ -1,4 +1,4 @@
-import { Department, WiseCondition, IncomeSource, ExpenseCategory, ExpensePriority, ExpenseStatus, ReserveType, FinancialCondition, PlanStatus, ReserveAccount, AllocationRule } from './types';
+import { Department, WiseCondition, IncomeSource, ExpenseCategory, ExpensePriority, ExpenseStatus, ReserveType, FinancialCondition, PlanStatus, ReserveAccount, AllocationRule, FP1SectionKey, FP1LineItem, FP1DocKey, ApprovalStage } from './types';
 
 // --- SECURITY CONFIGURATION ---
 export const ADMIN_EMAILS = ['hrtisland@gmail.com'];
@@ -346,4 +346,103 @@ export const FIN_PLANNING_WORKFLOW: { day: string; phase: PlanStatus; title: str
   { day: 'Суббота',     phase: 'closed',     title: 'Сверка с банком, отчёт по платёжеспособности',
     description: 'Банковская сверка всех операций. Расчёт коэффициента «Резервы / Счета к оплате». Закрытие недельного плана. Передача данных в архив.',
     role: 'Финансовый менеджер' },
+];
+
+// ============================================================================
+// ФП №1 — справочники и шаблоны (адаптация для туркомпании)
+// ============================================================================
+
+export const FP1_SECTION_LABELS: Record<FP1SectionKey, { num: string; label: string; description: string; color: string; icon: string }> = {
+  personnel:   { num: 'Раздел 1', label: 'Персонал',                      description: 'Минимально необходимый штат и еженедельный ФОТ по утверждённой системе оплаты и премий.', color: '#ef4444', icon: 'users' },
+  basic_needs: { num: 'Раздел 2', label: 'Базовые нужды компании',         description: 'Постоянные расходы для существования: аренда, ЖКХ, связь, налоги, обслуживание, амортизация, страхование и обязательные отчисления.', color: '#f59e0b', icon: 'building' },
+  promotion:   { num: 'Раздел 3', label: 'Базовое продвижение',            description: 'Минимально необходимое продвижение турпродукта: рассылки, реклама входных экскурсий, обслуживание партнёрской сети.', color: '#ec4899', icon: 'megaphone' },
+  comms:       { num: 'Раздел 4', label: 'Коммуникационные линии',         description: 'Отчисления управляющей структуре, внутреннее размножение документов, связь и почта между подразделениями.', color: '#8b5cf6', icon: 'mail' },
+  delivery:    { num: 'Раздел 5', label: 'Базовое предоставление услуг',   description: 'Обеспечение оказания услуг: расходники, оборудование, методические материалы, контроль качества, обучение.', color: '#22c55e', icon: 'package' },
+  commodity:   { num: 'Раздел 6', label: 'Товарный счёт (отдельно)',       description: 'Восполнение запасов сопутствующих товаров, продвижение, новые наименования, отправка. Ведётся отдельно от еженедельного ФП компании.', color: '#0ea5e9', icon: 'shopping-cart' },
+};
+
+// Стартовый набор строк ФП №1 для туркомпании. Эти строки редактируются в UI.
+export const DEFAULT_FP1_LINES: Omit<FP1LineItem, 'id'>[] = [
+  // === Раздел 1 — Персонал ===
+  { section: 'personnel', sort_order:  1, title: 'ФОТ штатных сотрудников (за неделю)',  weekly_amount: 480000, notes: 'По утверждённой системе зарплат и премий' },
+  { section: 'personnel', sort_order:  2, title: 'Премиальный фонд (производственный)',  weekly_amount: 65000,  notes: 'Бонусы за достижение KPI' },
+  { section: 'personnel', sort_order:  3, title: 'Налоги и взносы с ФОТ',                weekly_amount: 145000, notes: 'НДФЛ + страховые взносы' },
+
+  // === Раздел 2 — Базовые нужды ===
+  { section: 'basic_needs', sort_order:  1, title: 'Аренда офиса и складов',             weekly_amount: 87500,  notes: '350 тыс / 4 нед.' },
+  { section: 'basic_needs', sort_order:  2, title: 'Связь, интернет, телефония',         weekly_amount: 12500 },
+  { section: 'basic_needs', sort_order:  3, title: 'Электроэнергия и вода',              weekly_amount: 8200 },
+  { section: 'basic_needs', sort_order:  4, title: 'Местные налоги и сборы',             weekly_amount: 14000 },
+  { section: 'basic_needs', sort_order:  5, title: 'Юр. сопровождение и налоги',         weekly_amount: 22000 },
+  { section: 'basic_needs', sort_order:  6, title: 'Обслуживание помещений и техники',   weekly_amount: 11500 },
+  { section: 'basic_needs', sort_order:  7, title: 'Амортизация оборудования',           weekly_amount: 18000 },
+  { section: 'basic_needs', sort_order:  8, title: 'Канцелярия и расходные материалы',   weekly_amount: 6500 },
+  { section: 'basic_needs', sort_order:  9, title: 'Страхование (имущество, ответственность)', weekly_amount: 9500 },
+  { section: 'basic_needs', sort_order: 10, title: 'Отчисление в фонд компенсации потерь', weekly_amount: 0, is_percent: true, percent_of_svd: 5, notes: '5% от СВД — резерв на возвраты и форс-мажор' },
+  { section: 'basic_needs', sort_order: 11, title: 'Отчисление в инвестиционный фонд',   weekly_amount: 0, is_percent: true, percent_of_svd: 5, notes: '5% от СВД — капвложения' },
+  { section: 'basic_needs', sort_order: 12, title: 'Взнос на резервный счёт компании',   weekly_amount: 0, is_percent: true, percent_of_svd: 5, notes: 'не менее 5% от СВД — подушка безопасности' },
+
+  // === Раздел 3 — Базовое продвижение ===
+  { section: 'promotion', sort_order: 1, title: 'Таргетированная реклама в соцсетях',   weekly_amount: 65000 },
+  { section: 'promotion', sort_order: 2, title: 'Контекст и поисковая реклама',         weekly_amount: 45000 },
+  { section: 'promotion', sort_order: 3, title: 'Рассылки коммерческих предложений',    weekly_amount: 8500,  notes: 'Email + мессенджеры по базе клиентов' },
+  { section: 'promotion', sort_order: 4, title: 'Рассылка постоянным клиентам (журнал/дайджест)', weekly_amount: 6500 },
+  { section: 'promotion', sort_order: 5, title: 'Реклама входных экскурсий и трансферов', weekly_amount: 28000, notes: 'Привлечение новых клиентов через лоу-кост продукты' },
+  { section: 'promotion', sort_order: 6, title: 'Программа лояльности (награды, бонусы)', weekly_amount: 12000 },
+  { section: 'promotion', sort_order: 7, title: 'Обслуживание партнёрской сети агентов', weekly_amount: 18500 },
+  { section: 'promotion', sort_order: 8, title: 'Производство контента (фото, видео, гайды)', weekly_amount: 22000 },
+
+  // === Раздел 4 — Коммуникационные линии ===
+  { section: 'comms', sort_order: 1, title: 'Отчисления управляющей компании (HQ)',      weekly_amount: 0, is_percent: true, percent_of_svd: 10, notes: '10% от СВД — корпоративный сервис' },
+  { section: 'comms', sort_order: 2, title: 'Внутренние регламенты и документы',         weekly_amount: 4500 },
+  { section: 'comms', sort_order: 3, title: 'Курьерская доставка / почта',               weekly_amount: 3500 },
+  { section: 'comms', sort_order: 4, title: 'Подписки на ПО (CRM, аналитика, рассылки)', weekly_amount: 12500, notes: 'Месячные → / 4' },
+  { section: 'comms', sort_order: 5, title: 'Видео и презентационные материалы',         weekly_amount: 5500 },
+  { section: 'comms', sort_order: 6, title: 'Обучение сотрудников (внешние тренеры)',    weekly_amount: 11000 },
+
+  // === Раздел 5 — Базовые действия по предоставлению услуг ===
+  { section: 'delivery', sort_order: 1, title: 'Расходники для оказания услуг туристам', weekly_amount: 8500,  notes: 'Бейджи, бутилированная вода, флажки, шеи на бейджи' },
+  { section: 'delivery', sort_order: 2, title: 'ГСМ и техосмотр транспорта',             weekly_amount: 65000 },
+  { section: 'delivery', sort_order: 3, title: 'Аудиогиды и оборудование экскурсий',     weekly_amount: 9500 },
+  { section: 'delivery', sort_order: 4, title: 'Гонорары гидам/экскурсоводам',           weekly_amount: 95000,  notes: 'Подрядчики по договору' },
+  { section: 'delivery', sort_order: 5, title: 'Гонорары водителям и сопровождающим',    weekly_amount: 48000 },
+  { section: 'delivery', sort_order: 6, title: 'Печать бланков, чек-листов экскурсий',   weekly_amount: 2500 },
+  { section: 'delivery', sort_order: 7, title: 'Методические бюллетени, регламенты турпродукта', weekly_amount: 3500 },
+  { section: 'delivery', sort_order: 8, title: 'Контроль качества (тайные туристы, опросы)', weekly_amount: 7500 },
+  { section: 'delivery', sort_order: 9, title: 'Аптечки, средства первой помощи',        weekly_amount: 2200 },
+
+  // === Раздел 6 — Товарный счёт (отдельно) ===
+  { section: 'commodity', sort_order: 1, title: 'Закупка сувенирной продукции',          weekly_amount: 35000 },
+  { section: 'commodity', sort_order: 2, title: 'Закупка путеводителей и книг',          weekly_amount: 12000 },
+  { section: 'commodity', sort_order: 3, title: 'Продвижение товаров',                   weekly_amount: 8500 },
+  { section: 'commodity', sort_order: 4, title: 'Упаковка и отправка интернет-заказов',  weekly_amount: 4500 },
+  { section: 'commodity', sort_order: 5, title: 'Резерв на новые наименования',          weekly_amount: 6000 },
+];
+
+// Пакет документов для еженедельного финпланирования
+export const FP1_DOC_PACKAGE: Record<FP1DocKey, { label: string; description: string; preparer: string }> = {
+  bank_summary:        { label: 'Сводка по банковским счетам',  description: 'Остатки по всем счетам компании (без целевых)', preparer: 'Финансовый отдел' },
+  payables_summary:    { label: 'Сводка счетов к оплате',        description: 'Все неоплаченные счета + текущие платежи по займам и ипотеке', preparer: 'Отдел расходов' },
+  receivables_summary: { label: 'Сводка дебиторской задолженности', description: 'Сумма к получению от клиентов и контрагентов', preparer: 'Отдел доходов' },
+  cash_on_hand:        { label: 'Расчёт «Деньги в наличии»',     description: 'Банк (последняя сверка) + касса на 14:00 четверга', preparer: 'Финансовый отдел' },
+  avg_svd:             { label: 'Средний СВД за 4 месяца',       description: 'Скорректированный валовой доход за последние 16 недель', preparer: 'Бухгалтерия' },
+  fp1_current:         { label: 'Текущий ФП №1',                  description: 'Актуальная версия программы базовых расходов', preparer: 'Бюджетный комитет' },
+  income_plan:         { label: 'План дохода на неделю',          description: 'Прогноз поступлений по источникам', preparer: 'Коммерческий отдел' },
+  expense_plan:        { label: 'Проект финплана расходов',       description: 'Утверждаемый набор статей расходов недели', preparer: 'Бюджетный комитет' },
+};
+
+// 4 стадии пайплайна утверждения
+export const APPROVAL_PIPELINE: { stage: ApprovalStage; label: string; actor: string; role: string; description: string; color: string }[] = [
+  { stage: 'dept_requests',  label: '1. Заявки отделов',     actor: 'Руководители отделов', role: 'Инициатор',  description: 'Подают заявки на приобретение главе своего департамента с обоснованием и информацией о потребностях.',                                                                color: '#0ea5e9' },
+  { stage: 'budget_review',  label: '2. Бюджетный комитет',  actor: 'Главы 7 департаментов', role: 'Совещательный', description: 'Анализируют заявки, формируют план дохода и проект финплана расходов на неделю. Передают рекомендации исполнительному комитету.',                                color: '#f59e0b' },
+  { stage: 'exec_decision',  label: '3. Исполнительный комитет', actor: 'Топ-менеджмент компании', role: 'Решающий',   description: 'Помня о платёжеспособности и расширении: одобряет план, изменяет суммы или возвращает на доработку. Несёт полную ответственность за платёжеспособность.', color: '#8b5cf6' },
+  { stage: 'fin_allocation', label: '4. Финансовый менеджер',  actor: 'Финансовый менеджер',   role: 'Контроль',     description: 'Получает пакет документов, проверяет связь расходов с ростом производства. При согласии выдаёт ассигнования.',                                              color: '#22c55e' },
+];
+
+// Приоритеты распределения свободного дохода (после базовых расходов)
+export const ALLOCATION_PRIORITIES: { order: number; label: string; description: string; rule: string; color: string }[] = [
+  { order: 1, label: 'Базовые расходы по ФП №1', description: 'Минимально необходимые еженедельные потребности по разделам 1–5.', rule: '100% покрытия — в первую очередь', color: '#ef4444' },
+  { order: 2, label: 'Просроченные счета к оплате', description: 'Если просрочка существует — обязательное еженедельное отчисление.', rule: '10–15% от среднего СВД', color: '#f97316' },
+  { order: 3, label: 'Резервный счёт компании',     description: 'После погашения просрочки — обязательное накопление подушки безопасности.', rule: '≥5% от среднего СВД',     color: '#3b82f6' },
+  { order: 4, label: 'Расширение и развитие',       description: 'Усиление продвижения, увеличение штата, приобретение оборудования.', rule: 'Свободный остаток',            color: '#22c55e' },
 ];

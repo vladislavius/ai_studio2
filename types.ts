@@ -265,3 +265,72 @@ export interface SolvencySnapshot {
 // Состояние недельного плана по формуле "Резервы / Счета к оплате"
 export type FinancialCondition = 'crisis' | 'danger' | 'emergency' | 'normal' | 'affluence' | 'power';
 
+// ============================================================================
+// ФП №1 — программа расчёта базовых еженедельных потребностей
+// ============================================================================
+
+export type FP1SectionKey =
+  | 'personnel'   // Раздел 1 — Персонал
+  | 'basic_needs' // Раздел 2 — Базовые нужды для существования
+  | 'promotion'   // Раздел 3 — Базовое продвижение
+  | 'comms'       // Раздел 4 — Коммуникационные линии
+  | 'delivery'    // Раздел 5 — Базовые действия по предоставлению услуг
+  | 'commodity';  // Раздел 6 — Товарный счёт (отдельно)
+
+export interface FP1LineItem {
+  id: string;
+  section: FP1SectionKey;
+  title: string;
+  weekly_amount: number;
+  notes?: string;
+  is_percent?: boolean;     // отчисление в % от СВД
+  percent_of_svd?: number;  // если процентное — какой %
+  sort_order?: number;
+}
+
+export interface FP1Snapshot {
+  id: string;
+  week_start: string;
+  total_weekly_need: number;        // суммарный необходимый еженедельный доход
+  avg_svd_4mo: number;              // средний СВД за 4 месяца
+  current_income: number;           // фактический доход недели
+  break_even_status: 'below' | 'at' | 'above';   // отношение реального дохода к переломной точке
+  overdue_payments: number;         // просроченные счета к оплате
+  notes?: string;
+  created_at: string;
+}
+
+export type ApprovalStage =
+  | 'dept_requests'   // Руководители отделов подают заявки
+  | 'budget_review'   // Бюджетный комитет: проект плана
+  | 'exec_decision'   // Исполнительный комитет: решение
+  | 'fin_allocation'; // Финансовый менеджер: ассигнования
+
+export interface ApprovalEvent {
+  id: string;
+  plan_id: string;
+  stage: ApprovalStage;
+  actor: string;       // ФИО / роль
+  decided_at: string;
+  decision: 'approved' | 'rejected' | 'returned' | 'pending';
+  comment?: string;
+}
+
+export type FP1DocKey =
+  | 'bank_summary'        // сводка по банковским счетам
+  | 'payables_summary'    // сводка счетов к оплате
+  | 'receivables_summary' // сводка дебиторки
+  | 'cash_on_hand'        // расчёт «Деньги в наличии»
+  | 'avg_svd'             // средний СВД за 4 месяца
+  | 'fp1_current'         // текущий ФП №1
+  | 'income_plan'         // план дохода на неделю
+  | 'expense_plan';       // проект финплана расходов
+
+export interface FP1DocStatus {
+  key: FP1DocKey;
+  ready: boolean;
+  prepared_by?: string;
+  prepared_at?: string;
+  notes?: string;
+}
+
